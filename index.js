@@ -1,5 +1,4 @@
 const express = require("express");
-const userRoutes = require("./routes/userRoutes");
 const pool = require("./config/database");
 const farmerRoutes =
     require("./routes/farmerRoutes");
@@ -12,6 +11,17 @@ const inputRequestRoutes =
 const tonnageRoutes = require("./routes/tonnageroutes");
 const advisoryRoutes = require("./routes/advisoryroutes");
 const mentorshipRoutes = require("./routes/mentorshiproutes");
+const meetingRoutes = require("./routes/meetingRoutes");
+const meetingParticipantRoutes =
+    require("./routes/meetingParticipantRoutes");
+
+const workshopRoutes = require("./routes/workshopRoutes");
+const workshopParticipantRoutes =
+    require("./routes/workshopParticipantRoutes");
+    const opportunityRoutes =
+    require("./routes/opportunityRoutes");
+    const edRegister= require("./routes/EDregisterRoute");
+
 
 
 const app = express();
@@ -24,7 +34,7 @@ app.use(
     farmerRoutes
 );
 
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", edRegister)
 
 app.use(
     "/api/smme",
@@ -34,6 +44,7 @@ app.use(
     "/api/input-requests",
     inputRequestRoutes
 );
+app.use("/api/auth",authRoutes);
 
 app.use("/api/advisory", advisoryRoutes);
 
@@ -41,6 +52,25 @@ app.use("/api/mentorship", mentorshipRoutes);
 
 app.use("/api/tonnage", tonnageRoutes);
 
+//meetings
+app.use("/api/meetings", meetingRoutes);
+
+//meeting participants
+app.use(
+    "/api/meeting-participants",
+    meetingParticipantRoutes
+);
+
+//opportunities
+app.use("/api/opportunities", opportunityRoutes);
+
+//workshops
+app.use("/api/workshops", workshopRoutes);
+
+//workshop participants
+app.use( "/api/workshop-participants",
+    workshopParticipantRoutes
+);
 
 const PORT = 5000;
 

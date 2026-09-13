@@ -35,17 +35,16 @@ const loginUser = async (connection, email, password) => {
     }
 
     // Create JWT token
-    const token = jwt.sign(
-        {
-            userId: user.id,
-            roleId: user.role_id,
-            email: user.email
-        },
-        process.env.JWT_SECRET,
-        {
-            expiresIn: "1h"
-        }
-    );
+     const token = jwt.sign(
+    {
+        user_id: user.id,
+        role_id: user.role_id
+    },
+    process.env.JWT_SECRET,
+    {
+        expiresIn: "1h"
+    }
+);
 
     // Don't send password back
     delete user.password;

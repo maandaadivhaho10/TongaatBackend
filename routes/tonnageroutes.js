@@ -1,4 +1,11 @@
 const express = require("express");
+const {
+    authenticateToken
+} = require("../middleware/authMiddleware");
+
+const {
+    authorizeRoles
+} = require("../middleware/roleMiddleware");
 
 const {
     createTonnage,
@@ -8,7 +15,8 @@ const {
 
 const router = express.Router();
 
-router.post("/", createTonnage);
+router.post("/", authenticateToken,
+    authorizeRoles(1),createTonnage);
 
 router.get("/", getAllTonnage);
 

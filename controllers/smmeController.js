@@ -20,12 +20,18 @@ const {
     createBusinessDocuments
 } = require("../UserService/businessDocumentService");
 
+const {
+    uploadDocument
+} = require("../UserService/azureDocumentService");
 
 
 const registerSmme = async (req, res) => {
 
     let connection;
 
+    // Keep track of uploaded Azure files
+    // so they can be deleted if the database transaction fails
+    const uploadedFiles = [];
 
     try {
 
@@ -46,7 +52,8 @@ const registerSmme = async (req, res) => {
         // =====================================================
         // CREATE USER
         // =====================================================
-
+console.log("BODY:", req.body);
+console.log("FILES:", req.files);
         const user = await createUser(
             connection,
             req.body
@@ -68,6 +75,34 @@ const registerSmme = async (req, res) => {
 
 
         // =====================================================
+        // PARSE BUSINESS PROFILE
+        // =====================================================
+
+        let businessProfile;
+
+        if (!req.body.business_profile) {
+
+            throw new Error(
+                "Business profile information is required"
+            );
+        }
+
+        try {
+
+            businessProfile =
+                typeof req.body.business_profile === "string"
+                    ? JSON.parse(req.body.business_profile)
+                    : req.body.business_profile;
+
+        } catch (error) {
+
+            throw new Error(
+                "Invalid business_profile JSON"
+            );
+        }
+
+
+        // =====================================================
         // CREATE BUSINESS PROFILE
         // =====================================================
 
@@ -75,25 +110,88 @@ const registerSmme = async (req, res) => {
             await createBusinessProfile(
                 connection,
                 user.user_id,
-                req.body.business_profile
+                businessProfile
             );
-            //create bissness document
 
-            await createBusinessDocuments(
-    connection,
-    businessId,
-    req.body.business_documents
-);
+
+        // =====================================================
+        // VALIDATE BUSINESS DOCUMENTS
+        // =====================================================
+
+        if (
+            !req.files ||
+            req.files.length === 0
+        ) {
+
+            throw new Error(
+                "Business documents are required"
+            );
+        }
+
+
+        // =====================================================
+        // UPLOAD BUSINESS DOCUMENTS TO AZURE
+        // =====================================================
+
+        const documents = [];
+
+        for (const file of req.files) {
+
+            const uploadedDocument =
+                await uploadDocument(
+                    file,
+                    businessId
+                );
+
+            // Save the Azure file information
+            documents.push({
+                document_type: file.fieldname,
+                document_name: uploadedDocument.document_name,
+                document_path: uploadedDocument.document_path
+            });
+
+            // Keep track for cleanup if transaction fails
+            uploadedFiles.push(
+                uploadedDocument.document_path
+            );
+        }
+
+
+        // =====================================================
+        // SAVE DOCUMENT INFORMATION IN DATABASE
+        // =====================================================
+
+        await createBusinessDocuments(
+            connection,
+            businessId,
+            documents
+        );
 
 
         // =====================================================
         // VALIDATE MATURITY
         // =====================================================
 
+        let businessMaturity;
+
         if (!req.body.business_maturity) {
 
             throw new Error(
                 "Business maturity information is required"
+            );
+        }
+
+        try {
+
+            businessMaturity =
+                typeof req.body.business_maturity === "string"
+                    ? JSON.parse(req.body.business_maturity)
+                    : req.body.business_maturity;
+
+        } catch (error) {
+
+            throw new Error(
+                "Invalid business_maturity JSON"
             );
         }
 
@@ -106,7 +204,7 @@ const registerSmme = async (req, res) => {
             await createBusinessMaturity(
                 connection,
                 businessId,
-                req.body.business_maturity
+                businessMaturity
             );
 
 
@@ -114,10 +212,30 @@ const registerSmme = async (req, res) => {
         // CREATE CLIENT REFERENCES
         // =====================================================
 
+        let clientReferences = [];
+
+        if (req.body.client_references) {
+
+            try {
+
+                clientReferences =
+                    typeof req.body.client_references === "string"
+                        ? JSON.parse(req.body.client_references)
+                        : req.body.client_references;
+
+            } catch (error) {
+
+                throw new Error(
+                    "Invalid client_references JSON"
+                );
+            }
+        }
+
+
         await createClientReferences(
             connection,
             maturityId,
-            req.body.client_references
+            clientReferences
         );
 
 
@@ -148,7 +266,7 @@ const registerSmme = async (req, res) => {
     } catch (error) {
 
         // =====================================================
-        // ROLLBACK EVERYTHING
+        // ROLLBACK DATABASE
         // =====================================================
 
         if (connection) {
@@ -162,12 +280,38 @@ const registerSmme = async (req, res) => {
         );
 
 
-        let statusCode = 500;
+        // =====================================================
+        // DELETE AZURE FILES IF DATABASE FAILED
+        // =====================================================
 
+        // This is optional for now.
+        // Azure uploads are NOT automatically rolled back
+        // when MySQL rolls back.
+
+        /*
+        for (const fileUrl of uploadedFiles) {
+            try {
+                await deleteDocument(fileUrl);
+            } catch (deleteError) {
+                console.error(
+                    "Failed to delete Azure file:",
+                    deleteError
+                );
+            }
+        }
+        */
+
+
+        // =====================================================
+        // RESPONSE STATUS
+        // =====================================================
+
+        let statusCode = 500;
 
         if (
             error.message.includes("already registered")
         ) {
+
             statusCode = 409;
         }
 
