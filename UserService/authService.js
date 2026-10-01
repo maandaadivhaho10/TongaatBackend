@@ -35,10 +35,11 @@ const loginUser = async (connection, email, password) => {
     }
 
     // Create JWT token
-     const token = jwt.sign(
+    const token = jwt.sign(
     {
-        user_id: user.id,
-        role_id: user.role_id
+        user_id: user.user_id,
+        role_id: user.role_id,
+        email: user.email
     },
     process.env.JWT_SECRET,
     {

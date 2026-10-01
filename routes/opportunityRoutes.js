@@ -11,6 +11,8 @@ router.post(
     upload.single("image"),
     opportunityController.createOpportunity
 );
+
+
 router.get(
     "/target/:targetId",
     opportunityController.getOpportunitiesByTargetId

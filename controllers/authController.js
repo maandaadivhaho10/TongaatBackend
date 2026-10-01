@@ -2,8 +2,9 @@ const authService = require("../UserService/authService");
 const db = require("../config/database");
 
 const login = async (req, res) => {
+      let connection;
     try {
-           let connection;
+         
            
         connection = await db.getConnection();
 

@@ -3,33 +3,44 @@ const db = require("../config/database");
 
 
 const createInputRequest = async (req, res) => {
-  let connection;
+    let connection;
+
     try {
-             connection = await db.getConnection();
+        connection = await db.getConnection();
+
+        console.log("JWT user:", req.user);
+        console.log("Request body:", req.body);
+
+        // Get user ID from JWT
+        const user_id = req.user.user_id;
+
         const {
-            user_id,
             request_type,
             input_name,
             quantity,
-            unit,
             reason,
             request_date
         } = req.body;
 
+        // Check that user ID exists in JWT
+        if (!user_id) {
+            return res.status(401).json({
+                success: false,
+                message: "User ID not found in token"
+            });
+        }
 
         // Validate required fields
         if (
-            !user_id ||
             !request_type ||
             !input_name ||
             !request_date
         ) {
             return res.status(400).json({
                 success: false,
-                message: "user_id, request_type, input_name and request_date are required"
+                message: "request_type, input_name and request_date are required"
             });
         }
-
 
         // Validate request type
         if (
@@ -42,7 +53,7 @@ const createInputRequest = async (req, res) => {
             });
         }
 
-
+        // Create request
         const request =
             await inputRequestService.createInputRequest(
                 connection,
@@ -51,12 +62,10 @@ const createInputRequest = async (req, res) => {
                     request_type,
                     input_name,
                     quantity,
-                    unit,
                     reason,
                     request_date
                 }
             );
-
 
         return res.status(201).json({
             success: true,
@@ -75,6 +84,12 @@ const createInputRequest = async (req, res) => {
             success: false,
             message: "Failed to create input request"
         });
+
+    } finally {
+
+        if (connection) {
+            connection.release();
+        }
     }
 };
 
@@ -149,17 +164,24 @@ const getInputRequestById = async (req, res) => {
 
 
 const getInputRequestsByUser = async (req, res) => {
-
     try {
 
-        const { userId } = req.params;
+        console.log("JWT user:", req.user);
+
+        const user_id = req.user.user_id;
+
+        if (!user_id) {
+            return res.status(401).json({
+                success: false,
+                message: "User ID not found in token"
+            });
+        }
 
         const requests =
             await inputRequestService.getInputRequestsByUser(
                 db,
-                userId
+                user_id
             );
-
 
         return res.status(200).json({
             success: true,
@@ -179,7 +201,6 @@ const getInputRequestsByUser = async (req, res) => {
         });
     }
 };
-
 
 const updateInputRequestStatus = async (req, res) => {
 

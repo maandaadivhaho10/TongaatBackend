@@ -4,7 +4,6 @@ const createInputRequest = async (connection, requestData) => {
         request_type,
         input_name,
         quantity,
-        unit,
         reason,
         request_date
     } = requestData;
@@ -16,11 +15,11 @@ const createInputRequest = async (connection, requestData) => {
             request_type,
             input_name,
             quantity,
-            unit,
+            
             reason,
             request_date
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?,?)
     `;
 
     const [result] = await connection.execute(sql, [
@@ -28,7 +27,6 @@ const createInputRequest = async (connection, requestData) => {
         request_type,
         input_name,
         quantity,
-        unit,
         reason,
         request_date
     ]);
@@ -39,7 +37,6 @@ const createInputRequest = async (connection, requestData) => {
         request_type,
         input_name,
         quantity,
-        unit,
         reason,
         request_date,
         status: "PENDING"
@@ -50,11 +47,10 @@ const createInputRequest = async (connection, requestData) => {
 const getInputRequests = async (connection) => {
 
     const sql = `
-        SELECT
+        SELECT 
+            -- Input request details
             ir.input_request_id,
             ir.user_id,
-            u.first_name,
-            u.last_name,
             ir.request_type,
             ir.input_name,
             ir.quantity,
@@ -62,10 +58,44 @@ const getInputRequests = async (connection) => {
             ir.reason,
             ir.request_date,
             ir.status,
-            ir.created_at
+            ir.created_at,
+
+            -- User details
+            u.first_name,
+            u.last_name,
+            u.phone_number,
+            u.email,
+            u.province,
+            u.city,
+            u.address,
+            u.postal_code,
+
+            -- Business profile details
+            bp.business_id,
+            bp.business_name,
+            bp.company_registration_number,
+            bp.bwo_ownership_percentage,
+            bp.bo_ownership_percentage,
+            bp.bee_level,
+            bp.business_address,
+            bp.community,
+            bp.attended_esd_program,
+            bp.esd_institution,
+            bp.received_grant_or_loan,
+            bp.grant_loan_institution,
+            bp.status AS business_status
+
         FROM input_request ir
+
         INNER JOIN user u
             ON ir.user_id = u.user_id
+
+        LEFT JOIN business_profile bp
+            ON ir.user_id = bp.user_id
+
+        WHERE u.role_id = 1
+          AND ir.status IN ('SUBMITTED', 'PENDING')
+
         ORDER BY ir.created_at DESC
     `;
 

@@ -5,16 +5,23 @@ const {
     getAllMentorshipRequests,
     getMentorshipRequestById
 } = require("../controllers/mentorshipcontroller");
+const {
+    authenticateToken
+} = require("../middleware/authMiddleware");
+
+const {
+    authorizeRoles
+} = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
 
 // Insert mentorship request
-router.post("/", createMentorshipRequest);
+router.post("/",authenticateToken,authorizeRoles(2), createMentorshipRequest);
 
 
 // Get all mentorship requests
-router.get("/", getAllMentorshipRequests);
+router.get("/",authenticateToken,authorizeRoles(3), getAllMentorshipRequests);
 
 
 // Get mentorship request by ID

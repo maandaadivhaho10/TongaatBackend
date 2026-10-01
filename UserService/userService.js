@@ -1,4 +1,9 @@
 const bcrypt = require("bcrypt");
+const nodemailer = require("nodemailer");
+const crypto = require("crypto");
+require("dotenv").config();
+
+
 
 
 const createUser = async (connection, userData) => {
@@ -61,19 +66,20 @@ const createUser = async (connection, userData) => {
     // CHECK ROLE
     // =====================================================
 
-    const [roles] = await connection.query(
-        `
-        SELECT role_id, role_name
-        FROM role
-        WHERE role_id = ?
-        `,
-        [role_id]
-    );
+    console.log("role_id received:", role_id);
 
+const [roles] = await connection.query(
+    `
+    SELECT role_id, role_name
+    FROM role
+    WHERE role_id = ?
+    `,
+    [role_id]
+);
 
-    if (roles.length === 0) {
-        throw new Error("Invalid role");
-    }
+if (roles.length === 0) {
+    throw new Error("Invalid role");
+}
 
 
     // =====================================================
@@ -129,9 +135,10 @@ const createUser = async (connection, userData) => {
 
 
     return {
-        user_id: result.insertId,
-        role_name: roles[0].role_name
-    };
+    user_id: result.insertId,
+    role_name: roles[0].role_name,
+    email: email
+};
 };
 
 

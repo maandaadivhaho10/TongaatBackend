@@ -1,38 +1,27 @@
 const db = require("../config/database");
 
+const createTonnageSubmission = async ({
+    user_id,
+    submission_date,
+    tonnage
+}) => {
 
-// Add tonnage
-const createTonnageSubmission = async (data) => {
-    const {
-        user_id,
-        submission_date,
-        tonnage,
-        crop_type,
-        farm_location,
-        notes
-    } = data;
-
-    const query = `
+    const [result] = await db.query(
+        `
         INSERT INTO tonnage_submission
         (
             user_id,
             submission_date,
-            tonnage,
-            crop_type,
-            farm_location,
-            notes
+            tonnage
         )
-        VALUES (?, ?, ?, ?, ?, ?)
-    `;
-
-    const [result] = await db.execute(query, [
-        user_id,
-        submission_date,
-        tonnage,
-        crop_type || null,
-        farm_location || null,
-        notes || null
-    ]);
+        VALUES (?, ?, ?)
+        `,
+        [
+            user_id,
+            submission_date,
+            tonnage
+        ]
+    );
 
     return result.insertId;
 };
@@ -56,6 +45,29 @@ const getAllTonnageSubmissions = async () => {
     `;
 
     const [rows] = await db.execute(query);
+
+    return rows;
+};
+// Get all tonnage submissions for a user
+const getAllTonnageByUserId = async (user_id) => {
+
+    const query = `
+        SELECT
+            tonnage_id,
+            user_id,
+            submission_date,
+            tonnage,
+            status,
+            created_at
+        FROM tonnage_submission
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    `;
+
+    const [rows] = await db.execute(
+        query,
+        [user_id]
+    );
 
     return rows;
 };
@@ -88,5 +100,6 @@ const getTonnageByUserId = async (user_id) => {
 module.exports = {
     createTonnageSubmission,
     getAllTonnageSubmissions,
-    getTonnageByUserId
+    getTonnageByUserId,
+    getAllTonnageByUserId
 };

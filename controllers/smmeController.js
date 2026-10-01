@@ -23,6 +23,13 @@ const {
 const {
     uploadDocument
 } = require("../UserService/azureDocumentService");
+const {
+    createOtp
+} = require("../UserService/otpService");
+
+const {
+    sendOtpEmail
+} = require("../UserService/emailService");
 
 
 const registerSmme = async (req, res) => {
@@ -52,12 +59,17 @@ const registerSmme = async (req, res) => {
         // =====================================================
         // CREATE USER
         // =====================================================
+        const userData = JSON.parse(req.body.user);
+
 console.log("BODY:", req.body);
 console.log("FILES:", req.files);
-        const user = await createUser(
-            connection,
-            req.body
-        );
+console.log("USER DATA:", userData);
+console.log("ROLE ID:", userData.role_id);
+
+const user = await createUser(
+    connection,
+    userData
+);
 
 
         // =====================================================
@@ -249,10 +261,55 @@ console.log("FILES:", req.files);
         // =====================================================
         // RESPONSE
         // =====================================================
+          // ============================================
+        // RELEASE REGISTRATION CONNECTION
+        // ============================================
+
+        connection.release();
+        connection = null;
+                // ============================================
+                // CREATE OTP
+                // ============================================
+        
+                let otpConnection;
+        
+                try {
+        
+                    otpConnection =
+                        await db.getConnection();
+        
+                    const otp =
+                        await createOtp(
+                            otpConnection,
+                            user.user_id
+                        );
+        
+        
+                    // ========================================
+                    // SEND OTP EMAIL
+                    // ========================================
+        
+                    await sendOtpEmail(
+                        user.email,
+                        otp
+                    );
+        
+        
+                    console.log(
+                        `OTP sent to ${user.email}`
+                    );
+        
+                } finally {
+        
+                    if (otpConnection) {
+                        otpConnection.release();
+                    }
+                }
+        
 
         return res.status(201).json({
 
-            message: "SMME registered successfully",
+            message: "SMME registered successfully Otp sent",
 
             data: {
                 user_id: user.user_id,

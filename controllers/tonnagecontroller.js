@@ -1,50 +1,68 @@
-
 const tonnageService = require("../UserService/tonnageservice");
 
 // Add tonnage
 const createTonnage = async (req, res) => {
+
     try {
+console.log("========== TONNAGE REQUEST ==========");
+        console.log("JWT user:", req.user);
+        console.log("Request body:", req.body);
+        console.log("submission_date:", req.body.submission_date);
+        console.log("tonnage:", req.body.tonnage);
+        console.log("======================================");
+        // User comes from JWT
+        const user_id = req.user.user_id;
+
         const {
-            user_id,
             submission_date,
-            tonnage,
-            crop_type,
-            farm_location,
-            notes
+            tonnage
         } = req.body;
 
-        if (!user_id || !submission_date || tonnage === undefined) {
+
+        if (
+            !user_id ||
+            !submission_date ||
+            tonnage === undefined
+        ) {
+
             return res.status(400).json({
                 success: false,
-                message: "user_id, submission_date and tonnage are required"
+                message: "submission_date and tonnage are required"
             });
         }
 
-        const tonnageId = await tonnageService.createTonnageSubmission({
-            user_id,
-            submission_date,
-            tonnage,
-            crop_type,
-            farm_location,
-            notes
-        });
+
+        const tonnageId =
+            await tonnageService.createTonnageSubmission({
+                user_id,
+                submission_date,
+                tonnage
+            });
+
 
         res.status(201).json({
+
             success: true,
             message: "Tonnage submitted successfully",
             tonnage_id: tonnageId
+
         });
 
     } catch (error) {
-        console.error("Create tonnage error:", error);
+
+        console.error(
+            "Create tonnage error:",
+            error
+        );
 
         res.status(500).json({
+
             success: false,
             message: "Failed to submit tonnage"
+
         });
     }
 };
-
 
 // Get all tonnage
 const getAllTonnage = async (req, res) => {
@@ -90,8 +108,33 @@ const getTonnageByUserId = async (req, res) => {
         });
     }
 };
+const getMyTonnage = async (req, res) => {
+
+    try {
+
+        const user_id = req.user.user_id;
+
+        const tonnage =
+            await tonnageService.getAllTonnageByUserId(user_id);
+
+        return res.status(200).json({
+            success: true,
+            data: tonnage
+        });
+
+    } catch (error) {
+
+        console.error("Get tonnage error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to get tonnage submissions"
+        });
+    }
+};
 module.exports = {
     createTonnage,
     getAllTonnage,
-    getTonnageByUserId
+    getTonnageByUserId,
+    getMyTonnage
 };

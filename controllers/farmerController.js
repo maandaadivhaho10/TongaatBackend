@@ -1,6 +1,14 @@
 const db = require("../config/database");
 
 const {
+    createOtp
+} = require("../UserService/otpService");
+
+const {
+    sendOtpEmail
+} = require("../UserService/emailService");
+
+const {
     createUser
 } = require("../UserService/userService");
 
@@ -37,14 +45,20 @@ const registerFarmer = async (req, res) => {
 
 
         // ============================================
+        // PARSE USER PROFILE
+        // ============================================
+
+        const userProfile =
+            JSON.parse(req.body.user);
+
+
+        // ============================================
         // CREATE USER
         // ============================================
-        console.log("REQ BODY:", req.body);
-console.log("PASSWORD:", req.body.password);
 
         const user = await createUser(
             connection,
-            req.body
+            userProfile
         );
 
 
@@ -62,13 +76,17 @@ console.log("PASSWORD:", req.body.password);
 
 
         // ============================================
-        // CREATE BUSINESS PROFILE
+        // PARSE BUSINESS PROFILE
         // ============================================
-          // Parse business profile
+
         const businessProfile =
             JSON.parse(req.body.business_profile);
 
-         // Create business profile
+
+        // ============================================
+        // CREATE BUSINESS PROFILE
+        // ============================================
+
         const businessId =
             await createBusinessProfile(
                 connection,
@@ -83,15 +101,21 @@ console.log("PASSWORD:", req.body.password);
 
         const uploadedDocuments = [];
 
-        if (req.files && req.files.length > 0) {
+        if (!req.files || req.files.length !== 3) {
 
-            if (req.files.length !== 3) {
-                throw new Error(
-                    "Exactly 3 documents are required"
+            throw new Error(
+                "Exactly 3 documents are required"
+            );
+        }
+
+
+        const uploadedResults = await Promise.all(
+
+            req.files.map(async (file) => {
+
+                console.log(
+                    `Uploading document: ${file.originalname}`
                 );
-            }
-
-            for (const file of req.files) {
 
                 const uploaded =
                     await uploadDocument(
@@ -99,7 +123,12 @@ console.log("PASSWORD:", req.body.password);
                         businessId
                     );
 
-                uploadedDocuments.push({
+                console.log(
+                    `Uploaded successfully: ${file.originalname}`
+                );
+
+                return {
+
                     document_type:
                         file.fieldname,
 
@@ -108,15 +137,19 @@ console.log("PASSWORD:", req.body.password);
 
                     document_path:
                         uploaded.document_path
-                });
-            }
-        }
+                };
+            })
+        );
+
+
+        uploadedDocuments.push(
+            ...uploadedResults
+        );
 
 
         // ============================================
         // SAVE DOCUMENT RECORDS
         // ============================================
-        
 
         await createBusinessDocuments(
             connection,
@@ -126,13 +159,17 @@ console.log("PASSWORD:", req.body.password);
 
 
         // ============================================
-        // CREATE FARM
+        // PARSE FARM
         // ============================================
-       // Parse farm
+
         const farm =
             JSON.parse(req.body.farm);
 
-        // Create farm
+
+        // ============================================
+        // CREATE FARM
+        // ============================================
+
         const farmId =
             await createFarm(
                 connection,
@@ -142,10 +179,62 @@ console.log("PASSWORD:", req.body.password);
 
 
         // ============================================
-        // COMMIT TRANSACTION
+        // COMMIT REGISTRATION
         // ============================================
 
         await connection.commit();
+
+        console.log(
+            "Farmer registration transaction committed"
+        );
+
+
+        // ============================================
+        // RELEASE REGISTRATION CONNECTION
+        // ============================================
+
+        connection.release();
+        connection = null;
+
+
+        // ============================================
+        // CREATE OTP
+        // ============================================
+
+        let otpConnection;
+
+        try {
+
+            otpConnection =
+                await db.getConnection();
+
+            const otp =
+                await createOtp(
+                    otpConnection,
+                    user.user_id
+                );
+
+
+            // ========================================
+            // SEND OTP EMAIL
+            // ========================================
+
+            await sendOtpEmail(
+                user.email,
+                otp
+            );
+
+
+            console.log(
+                `OTP sent to ${user.email}`
+            );
+
+        } finally {
+
+            if (otpConnection) {
+                otpConnection.release();
+            }
+        }
 
 
         // ============================================
@@ -155,53 +244,81 @@ console.log("PASSWORD:", req.body.password);
         return res.status(201).json({
 
             message:
-                "Farmer registered successfully",
+                "Farmer registered successfully. OTP sent to your email.",
 
             data: {
-                user_id: user.user_id,
-                business_id: businessId,
-                farm_id: farmId,
+
+                user_id:
+                    user.user_id,
+
+                business_id:
+                    businessId,
+
+                farm_id:
+                    farmId,
 
                 documents:
                     uploadedDocuments
             }
-
         });
 
+
     } catch (error) {
+
 
         // ============================================
         // ROLLBACK
         // ============================================
 
         if (connection) {
-            await connection.rollback();
+
+            try {
+
+                await connection.rollback();
+
+            } catch (rollbackError) {
+
+                console.error(
+                    "Rollback error:",
+                    rollbackError
+                );
+            }
+
+            connection.release();
+            connection = null;
         }
+
 
         console.error(
             "Farmer registration error:",
             error
         );
 
+
+        // ============================================
+        // ERROR STATUS
+        // ============================================
+
         let statusCode = 500;
 
+
         if (
+            error.message &&
             error.message.includes(
                 "already registered"
             )
         ) {
+
             statusCode = 409;
         }
 
+
         return res.status(statusCode).json({
-            message: error.message
+
+            message:
+                error.message ||
+                "Farmer registration failed"
         });
-
-    } finally {
-
-        if (connection) {
-            connection.release();
-        }
     }
 };
 

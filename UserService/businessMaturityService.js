@@ -5,7 +5,7 @@ const createBusinessMaturity = async (
 ) => {
 
     const {
-        industry_sector,
+        sector_id,
         services,
 
         number_of_employees,
@@ -49,7 +49,7 @@ const createBusinessMaturity = async (
 
             business_id,
 
-            industry_sector,
+            sector_id,
             services,
 
             number_of_employees,
@@ -85,8 +85,8 @@ const createBusinessMaturity = async (
         )
 
         VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-)
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )
     `;
 
 
@@ -94,7 +94,7 @@ const createBusinessMaturity = async (
 
         businessId,
 
-        industry_sector || null,
+        sector_id || null,
         services || null,
 
         number_of_employees || 0,

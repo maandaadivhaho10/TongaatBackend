@@ -27,6 +27,7 @@ router.get("/:id", meetingController.getMeetingById);
 router.put("/:id", meetingController.updateMeeting);
 
 // Delete meeting
-router.delete("/:id", meetingController.deleteMeeting);
+router.delete("/:id", authenticateToken,
+    authorizeRoles(3) ,meetingController.deleteMeeting);
 
 module.exports = router;
