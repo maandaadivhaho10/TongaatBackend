@@ -1,3 +1,4 @@
+
 const db = require("../config/database");
 
 const transporter = require("../config/email");
@@ -6,7 +7,6 @@ const {
     createRFQResponse,
     markEmailAsSent
 } = require("../UserService/rfqResponseService");
-
 
 // =====================================================
 // APPLY FOR RFQ
@@ -24,8 +24,7 @@ async function applyForRFQ(req, res) {
             user_id,
             proposal,
             quoted_price
-        } = req.body;
-
+        } = JSON.parse(req.body.data);
 
         // =================================================
         // VALIDATION
@@ -39,7 +38,6 @@ async function applyForRFQ(req, res) {
             });
         }
 
-
         if (!user_id) {
 
             return res.status(400).json({
@@ -47,7 +45,6 @@ async function applyForRFQ(req, res) {
                 message: "User ID is required"
             });
         }
-
 
         if (!proposal) {
 
@@ -57,7 +54,6 @@ async function applyForRFQ(req, res) {
             });
         }
 
-
         if (!quoted_price) {
 
             return res.status(400).json({
@@ -65,7 +61,6 @@ async function applyForRFQ(req, res) {
                 message: "Quoted price is required"
             });
         }
-
 
         // =================================================
         // CHECK DOCUMENT
@@ -79,7 +74,6 @@ async function applyForRFQ(req, res) {
             });
         }
 
-
         // =================================================
         // CHECK FILE TYPE
         // =================================================
@@ -91,7 +85,6 @@ async function applyForRFQ(req, res) {
                 message: "Quotation document must be a PDF"
             });
         }
-
 
         // =================================================
         // CHECK USER
@@ -113,7 +106,6 @@ async function applyForRFQ(req, res) {
             [user_id]
         );
 
-
         if (users.length === 0) {
 
             return res.status(404).json({
@@ -122,9 +114,7 @@ async function applyForRFQ(req, res) {
             });
         }
 
-
         const user = users[0];
-
 
         // =================================================
         // USER MUST BE SMME
@@ -138,7 +128,6 @@ async function applyForRFQ(req, res) {
             });
         }
 
-
         // =================================================
         // CHECK RFQ
         // =================================================
@@ -151,14 +140,12 @@ async function applyForRFQ(req, res) {
                 description,
                 closing_date,
                 published_by,
-                target_role_id,
                 status
             FROM RFQopportunity
             WHERE rfq_id = ?
             `,
             [rfqId]
         );
-
 
         if (rfqs.length === 0) {
 
@@ -168,9 +155,7 @@ async function applyForRFQ(req, res) {
             });
         }
 
-
         const rfq = rfqs[0];
-
 
         // =================================================
         // CHECK RFQ STATUS
@@ -183,20 +168,6 @@ async function applyForRFQ(req, res) {
                 message: "This RFQ is no longer open"
             });
         }
-
-
-        // =================================================
-        // CHECK TARGET ROLE
-        // =================================================
-
-        if (rfq.target_role_id !== 2) {
-
-            return res.status(400).json({
-                success: false,
-                message: "This RFQ is not available to SMMEs"
-            });
-        }
-
 
         // =================================================
         // CHECK CLOSING DATE
@@ -212,7 +183,6 @@ async function applyForRFQ(req, res) {
                 message: "The RFQ closing date has passed"
             });
         }
-
 
         // =================================================
         // CHECK SMME SECTOR MATCH
@@ -243,7 +213,6 @@ async function applyForRFQ(req, res) {
             ]
         );
 
-
         if (sectorMatch.length === 0) {
 
             return res.status(403).json({
@@ -251,7 +220,6 @@ async function applyForRFQ(req, res) {
                 message: "Your business sector does not match this RFQ"
             });
         }
-
 
         // =================================================
         // CHECK DUPLICATE APPLICATION
@@ -270,7 +238,6 @@ async function applyForRFQ(req, res) {
             ]
         );
 
-
         if (existingResponse.length > 0) {
 
             return res.status(409).json({
@@ -279,13 +246,11 @@ async function applyForRFQ(req, res) {
             });
         }
 
-
         // =================================================
         // START TRANSACTION
         // =================================================
 
         await connection.beginTransaction();
-
 
         // =================================================
         // SAVE RESPONSE
@@ -300,7 +265,6 @@ async function applyForRFQ(req, res) {
         console.log("file type:", req.file.mimetype);
         console.log("file size:", req.file.size);
 
-
         const responseId = await createRFQResponse(
             connection,
             {
@@ -311,16 +275,14 @@ async function applyForRFQ(req, res) {
             }
         );
 
-
         // =================================================
         // COMMIT
         // =================================================
 
         await connection.commit();
 
-
         // =================================================
-        // SEND EMAIL
+        // SEND EMAIL TO RFQ PUBLISHER
         // =================================================
 
         let emailSent = false;
@@ -343,12 +305,9 @@ async function applyForRFQ(req, res) {
                 [rfq.published_by]
             );
 
-
             if (publisher.length > 0) {
 
-                const recipientEmail =
-                    publisher[0].email;
-
+                const recipientEmail = publisher[0].email;
 
                 // -----------------------------------------
                 // SEND EMAIL WITH PDF ATTACHMENT
@@ -430,7 +389,6 @@ async function applyForRFQ(req, res) {
                     ]
                 });
 
-
                 // -----------------------------------------
                 // EMAIL SENT SUCCESSFULLY
                 // -----------------------------------------
@@ -441,18 +399,154 @@ async function applyForRFQ(req, res) {
                 );
 
                 emailSent = true;
+
+                console.log(
+                    "RFQ application email sent to publisher:",
+                    recipientEmail
+                );
             }
 
         } catch (emailError) {
 
             console.error(
-                "RFQ application saved but email failed:",
+                "RFQ application saved but publisher email failed:",
                 emailError
             );
 
             // Application remains saved.
         }
 
+        // =================================================
+        // NEW: SEND CONFIRMATION EMAIL TO SMME APPLICANT
+        // =================================================
+
+        let applicantEmailSent = false;
+
+        try {
+
+            await transporter.sendMail({
+
+                from: process.env.EMAIL_USER,
+
+                to: user.email,
+
+                subject:
+                    `RFQ Application Confirmation - ${rfq.title}`,
+
+                html: `
+                    <div style="
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        max-width: 650px;
+                        margin: auto;
+                    ">
+
+                        <h2 style="color: #201E64;">
+                            RFQ Application Confirmation
+                        </h2>
+
+                        <p>
+                            Dear ${user.first_name} ${user.last_name},
+                        </p>
+
+                        <p>
+                            Thank you for submitting your quotation
+                            through the Tongaat Hulett Enterprise
+                            and Supplier Development Portal.
+                        </p>
+
+                        <p>
+                            Your RFQ application has been
+                            successfully recorded.
+                        </p>
+
+                        <hr>
+
+                        <h3 style="color: #201E64;">
+                            Application Details
+                        </h3>
+
+                        <p>
+                            <strong>RFQ Title:</strong>
+                            ${rfq.title}
+                        </p>
+
+                        <p>
+                            <strong>Application Reference:</strong>
+                            ${responseId}
+                        </p>
+
+                        <p>
+                            <strong>Proposal:</strong>
+                            ${proposal}
+                        </p>
+
+                        <p>
+                            <strong>Quoted Price:</strong>
+                            R ${quoted_price}
+                        </p>
+
+                        <p>
+                            <strong>Application Status:</strong>
+                            SUBMITTED
+                        </p>
+
+                        <p>
+                            <strong>Quotation Document:</strong>
+                            ${req.file.originalname}
+                        </p>
+
+                        <hr>
+
+                        <p>
+                            Your application has been recorded
+                            and will be reviewed by the
+                            relevant team.
+                        </p>
+
+                        <p>
+                            You will be contacted if further
+                            information is required or when
+                            there are updates regarding
+                            your application.
+                        </p>
+
+                        <p>
+                            Please keep your application
+                            reference number for future
+                            enquiries.
+                        </p>
+
+                        <br>
+
+                        <p>
+                            Kind regards,<br>
+                            <strong>
+                                Tongaat Hulett ESD Team
+                            </strong>
+                        </p>
+
+                    </div>
+                `
+            });
+
+            applicantEmailSent = true;
+
+            console.log(
+                "RFQ confirmation email sent to applicant:",
+                user.email
+            );
+
+        } catch (applicantEmailError) {
+
+            console.error(
+                "RFQ application saved but applicant confirmation email failed:",
+                applicantEmailError
+            );
+
+            // Application remains saved.
+        }
 
         // =================================================
         // RESPONSE
@@ -464,7 +558,7 @@ async function applyForRFQ(req, res) {
 
             message: emailSent
                 ? "RFQ application submitted and email sent successfully"
-                : "RFQ application submitted, but the email could not be sent",
+                : "RFQ application submitted, but the publisher email could not be sent",
 
             data: {
 
@@ -486,7 +580,9 @@ async function applyForRFQ(req, res) {
 
                 status: "SUBMITTED",
 
-                email_sent: emailSent
+                email_sent: emailSent,
+
+                applicant_email_sent: applicantEmailSent
             }
 
         });
@@ -515,7 +611,6 @@ async function applyForRFQ(req, res) {
         connection.release();
     }
 }
-
 
 module.exports = {
     applyForRFQ

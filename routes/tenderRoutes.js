@@ -7,6 +7,7 @@ const {
     getAllTendersController,
     getTenderByIdController
 } = require("../controllers/tenderController");
+const upload = require("../middleware/upload");
 
 
 // =====================================================
@@ -15,7 +16,7 @@ const {
 // =====================================================
 
 router.post(
-    "/",
+    "/",upload.single("opportunity_document"),
     createTenderController
 );
 

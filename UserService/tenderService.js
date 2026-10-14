@@ -12,6 +12,7 @@ async function createTender({
     published_by,
     image_url
 }) {
+
     const query = `
         INSERT INTO TenderOpportunity
         (
@@ -86,9 +87,12 @@ async function getTenderById(tenderId) {
         WHERE tender_id = ?
     `;
 
-    const [rows] = await db.execute(query, [tenderId]);
+    const [rows] = await db.execute(
+        query,
+        [tenderId]
+    );
 
-    return rows[0];
+    return rows[0] || null;
 }
 
 

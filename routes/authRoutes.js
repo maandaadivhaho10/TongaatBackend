@@ -9,14 +9,21 @@ const uploadDocuments =
     require("../middleware/uploadBissnessDocuments")
     const {
     registerSmme
-} = require("../controllers/smmeController");
+} = require("../controllers/SMMERegister/smmeController");
+const {
+    authenticateToken
+} = require("../middleware/authMiddleware");
+
+const {
+    authorizeRoles
+} = require("../middleware/roleMiddleware");
 
 
-const authController1 = require("../controllers/EDteamRegisterController");
+const authController1 = require("../controllers/SMMERegister/RegisterProfileController");
 
 // Create user
 router.post(
-    "/register/edteam",
+    "/register/smme",
     authController1.createUser
 );
 
@@ -36,7 +43,7 @@ router.post(
 
 
 router.post(
-    "/register/smme",
+    "/register/company",authenticateToken,authorizeRoles(1),
     uploadDocuments.array("business_documents", 3),
     registerSmme
 );

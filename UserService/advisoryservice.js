@@ -1,6 +1,5 @@
 const db = require("../config/database");
 
-// Create advisory request
 const createAdvisoryRequest = async (data) => {
     const {
         user_id,
@@ -9,6 +8,8 @@ const createAdvisoryRequest = async (data) => {
         request_date,
         preferred_date
     } = data;
+
+    console.log("5. Starting SQL INSERT");
 
     const query = `
         INSERT INTO business_advisory_request
@@ -27,12 +28,13 @@ const createAdvisoryRequest = async (data) => {
         subject,
         description,
         request_date,
-        preferred_date || null
+        preferred_date ?? null
     ]);
+
+    console.log("6. SQL INSERT completed");
 
     return result.insertId;
 };
-
 
 // Get all advisory requests
 const getAllAdvisoryRequests = async () => {

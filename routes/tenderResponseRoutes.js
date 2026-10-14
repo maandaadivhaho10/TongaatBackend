@@ -15,7 +15,7 @@ const {
 // =====================================================
 
 router.post(
-    "/",
+    "/apply",
     createTenderResponseController
 );
 

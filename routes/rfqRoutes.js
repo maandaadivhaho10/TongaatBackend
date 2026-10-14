@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
-    createRFQOpportunity,getUserRFQs,getMyAppliedRFQs
+    createRFQOpportunity,getUserRFQs,getMyAppliedRFQs,getAllRFQs
 } = require("../controllers/rfqController");
 
 const {
@@ -22,12 +22,12 @@ const upload = require("../middleware/upload");
 
 // Create RFQ opportunity
 router.post(
-    "/",upload.single("image"),
+    "/",upload.single("opportunity_document"),
     createRFQOpportunity
 );
 // Get RFQs for user's sector
 router.get(
-    "/user/:userId",
+    "/user",authenticateToken,
     getUserRFQs
 );
 
@@ -46,6 +46,13 @@ router.get(
    getMyAppliedRFQs
 );
 
+
+router.get(
+    "/",
+    authenticateToken,
+    authorizeRoles(2, 3, 4),
+    getAllRFQs
+);
 
 
 module.exports = router;

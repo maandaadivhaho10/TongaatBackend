@@ -1,48 +1,54 @@
 const advisoryService = require("../UserService/advisoryservice");
 
-// Create advisory request
 const createAdvisoryRequest = async (req, res) => {
     try {
+        console.log("1. Advisory controller reached");
+
+        const user_id = req.user?.user_id;
+
         const {
-            user_id,
             subject,
             description,
             request_date,
             preferred_date
         } = req.body;
 
-        if (
-            !user_id ||
-            !subject ||
-            !description ||
-            !request_date
-        ) {
-            return res.status(400).json({
+        console.log("2. User ID:", user_id);
+
+        if (!user_id) {
+            return res.status(401).json({
                 success: false,
-                message: "user_id, subject, description and request_date are required"
+                message: "Unauthorized"
             });
         }
 
-        const requestId =
-            await advisoryService.createAdvisoryRequest(req.body);
+        console.log("3. Before calling database");
 
-        res.status(201).json({
+        const result = await advisoryService({
+            user_id,
+            subject,
+            description,
+            request_date,
+            preferred_date
+        });
+
+        console.log("4. Database completed:", result);
+
+        return res.status(201).json({
             success: true,
-            message: "Business advisory request submitted successfully",
-            advisory_request_id: requestId
+            message: "Advisory request submitted",
+            data: result
         });
 
     } catch (error) {
-        console.error("Create advisory request error:", error);
+        console.error("Advisory error:", error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: "Failed to create advisory request"
+            message: error.message
         });
     }
 };
-
-
 // Get all advisory requests
 const getAllAdvisoryRequests = async (req, res) => {
     try {

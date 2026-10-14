@@ -2,28 +2,48 @@ const express = require("express");
 const pool = require("./config/database");
 
 const authRoutes = require("./routes/authRoutes");
-const inputRequestRoutes = require("./routes/inputRequestRoutes");
-const tonnageRoutes = require("./routes/tonnageroutes");
-const advisoryRoutes = require("./routes/advisoryroutes");
 const mentorshipRoutes = require("./routes/mentorshiproutes");
 const meetingRoutes = require("./routes/meetingRoutes");
 const meetingParticipantRoutes = require("./routes/meetingParticipantRoutes");
-const workshopRoutes = require("./routes/workshopRoutes");
-const workshopParticipantRoutes = require("./routes/workshopParticipantRoutes");
-
 const opportunityRoutes = require("./routes/opportunityRoutes");
 const opportunityResponseRoutes = require("./routes/opportunityResponseRoutes");
-
 const otpRoutes = require("./routes/otpRoutes");
 const rfqRoutes = require("./routes/rfqRoutes");
 const tenderRoutes = require("./routes/tenderRoutes");
 const tenderResponseRoutes =
     require("./routes/tenderResponseRoutes");
+    const supplierRoutes =
+    require("./routes/supplierRoutes");
+    const businessProfileRoutes =  require("./routes/RegisterSMME/businessProfileRoutes");
+    const businessMaturityRoutes = require(
+    "./routes/RegisterSMME//businessMaturityRoutes"
+);
+const advisoryRoutes = require("./routes/BissnessAdvisory/advisoryRoutes");
+const taxComplianceRoutes = require(
+    "./routes/taxCompliance/taxComplianceRoutes"
+);
+const tenderDetailsRoutes = require(
+    "./routes/TenderRoutes/tenderDetailsRoutes"
+);
 
+const rfqDetailsRoutes = require(
+    "./routes/RFQ/rfqDetailsRoutes"
+);
+
+const esdActivityRoutes = require(
+  "./routes/ESDActities/esdActivityRoutes"
+);
+
+const cors = require("cors");
 const app = express();
 
 app.use(express.json());
-
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+  })
+);
 
 // ======================== AUTH ========================
 
@@ -31,17 +51,26 @@ app.use("/api/auth", authRoutes);
 
 app.use("/api/otp", otpRoutes);
 
-
-// ======================== FARMER ========================
-
-app.use("/api/input-requests", inputRequestRoutes);
-
-app.use("/api/tonnage", tonnageRoutes);
+app.use((req, res, next) => {
+    console.log("Incoming request:", req.method, req.originalUrl);
+    next();
+});
 
 
 // ======================== SMME ========================
+app.use("/business-profile", businessProfileRoutes);
+app.use(
+    "/business-maturity",
+    businessMaturityRoutes
+);
+app.use(
+  "/registration",
+  require("./routes/RegisterSMME/registrationStatusRoutes")
+);
 
-app.use("/api/advisory", advisoryRoutes);
+
+
+app.use("/advisory", advisoryRoutes);
 
 app.use("/api/mentorship", mentorshipRoutes);
 
@@ -67,6 +96,11 @@ app.use("/api", opportunityResponseRoutes);
 
 app.use("/api/rfq", rfqRoutes);
 
+app.use(
+    "/api/rfqs",
+    rfqDetailsRoutes
+);
+
 
 // ======================== TENDERS ========================
 
@@ -75,17 +109,23 @@ app.use(
     "/api/tender-responses",
     tenderResponseRoutes
 );
-
-
-// ======================== WORKSHOPS ========================
-
-app.use("/api/workshops", workshopRoutes);
-
 app.use(
-    "/api/workshop-participants",
-    workshopParticipantRoutes
+    "/api/tenders",
+    tenderDetailsRoutes
 );
 
+
+// ======================== EVENT========================
+
+
+app.use("/api/esd-activities", esdActivityRoutes);
+
+// ======================== GET ALL SUPPILIES ========================
+app.use(
+    "/api/suppliers",
+    supplierRoutes
+);
+app.use("/tax-compliance", taxComplianceRoutes);
 
 // ======================== SERVER ========================
 

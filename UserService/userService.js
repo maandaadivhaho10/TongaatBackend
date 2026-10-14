@@ -4,22 +4,21 @@ const crypto = require("crypto");
 require("dotenv").config();
 
 
-
+// =====================================================
+// CREATE USER
+// =====================================================
 
 const createUser = async (connection, userData) => {
 
     const {
         role_id,
+        title,
         first_name,
         last_name,
         id_number,
         gender,
         phone_number,
         email,
-        province,
-        city,
-        address,
-        postal_code,
         password
     } = userData;
 
@@ -36,7 +35,6 @@ const createUser = async (connection, userData) => {
         `,
         [id_number]
     );
-
 
     if (existingId.length > 0) {
         throw new Error("ID number is already registered");
@@ -56,7 +54,6 @@ const createUser = async (connection, userData) => {
         [email]
     );
 
-
     if (existingEmail.length > 0) {
         throw new Error("Email is already registered");
     }
@@ -68,25 +65,28 @@ const createUser = async (connection, userData) => {
 
     console.log("role_id received:", role_id);
 
-const [roles] = await connection.query(
-    `
-    SELECT role_id, role_name
-    FROM role
-    WHERE role_id = ?
-    `,
-    [role_id]
-);
+    const [roles] = await connection.query(
+        `
+        SELECT role_id, role_name
+        FROM role
+        WHERE role_id = ?
+        `,
+        [role_id]
+    );
 
-if (roles.length === 0) {
-    throw new Error("Invalid role");
-}
+    if (roles.length === 0) {
+        throw new Error("Invalid role");
+    }
 
 
     // =====================================================
     // HASH PASSWORD
     // =====================================================
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await bcrypt.hash(
+        password,
+        10
+    );
 
 
     // =====================================================
@@ -96,34 +96,28 @@ if (roles.length === 0) {
     const sql = `
         INSERT INTO user (
             role_id,
+            title,
             first_name,
             last_name,
             id_number,
             gender,
             phone_number,
             email,
-            province,
-            city,
-            address,
-            postal_code,
             password_hash
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
 
     const values = [
         role_id,
+        title,
         first_name,
         last_name,
         id_number,
         gender || null,
         phone_number || null,
         email,
-        province || null,
-        city || null,
-        address || null,
-        postal_code || null,
         password_hash
     ];
 
@@ -134,11 +128,19 @@ if (roles.length === 0) {
     );
 
 
+    // =====================================================
+    // RETURN CREATED USER
+    // =====================================================
+
     return {
-    user_id: result.insertId,
-    role_name: roles[0].role_name,
-    email: email
-};
+        user_id: result.insertId,
+        role_id: role_id,
+        role_name: roles[0].role_name,
+        title: title,
+        first_name: first_name,
+        last_name: last_name,
+        email: email
+    };
 };
 
 

@@ -15,7 +15,6 @@ async function createRFQ(connection, rfqData, imageFile) {
         closing_date,
         location,
         published_by,
-        target_role_id
     } = rfqData;
 
 
@@ -65,11 +64,10 @@ async function createRFQ(connection, rfqData, imageFile) {
             closing_date,
             location,
             published_by,
-            target_role_id,
             status,
             image_url
         )
-        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?)
+        VALUES (?, ?, ?, ?, ?, 'OPEN', ?)
         `,
         [
             title,
@@ -77,7 +75,6 @@ async function createRFQ(connection, rfqData, imageFile) {
             closing_date || null,
             location || null,
             published_by,
-            target_role_id,
             imageUrl
         ]
     );
@@ -90,7 +87,6 @@ async function createRFQ(connection, rfqData, imageFile) {
         closing_date,
         location,
         published_by,
-        target_role_id,
         status: "OPEN",
         image_url: imageUrl
     };
@@ -161,7 +157,6 @@ async function getRFQsForUser(connection, userId) {
             ON u.user_id = bp.user_id
 
         WHERE u.user_id = ?
-          AND r.target_role_id = 2
           AND r.status = 'OPEN'
 
         ORDER BY r.created_at DESC
@@ -212,6 +207,33 @@ async function getAppliedRfqsByUser(connection, userId) {
     return rows;
 }
 
+
+
+// =====================================================
+// FETCH ALL RFQS
+// =====================================================
+
+const getAllRFQsService = async () => {
+    const [rows] = await db.query(`
+        SELECT
+            rfq_id,
+            title,
+            description,
+            closing_date,
+            location,
+            published_by,
+            status,
+            image_url,
+            created_at
+        FROM rfqopportunity
+        ORDER BY created_at DESC, rfq_id DESC
+    `);
+
+    return rows;
+};
+
+
+
 // =====================================================
 // EXPORT
 // =====================================================
@@ -220,5 +242,5 @@ module.exports = {
     createRFQ,
     addRFQSectors,
     getRFQsForUser,
-    getAppliedRfqsByUser
+    getAppliedRfqsByUser,getAllRFQsService
 };

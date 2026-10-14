@@ -4,7 +4,7 @@ const {
     createRFQ,
     addRFQSectors,
     getRFQsForUser,
-    getAppliedRfqsByUser
+    getAppliedRfqsByUser,getAllRFQsService
 } = require("../UserService/rfqService");
 
 
@@ -24,7 +24,6 @@ async function createRFQOpportunity(req, res) {
             closing_date,
             location,
             published_by,
-            target_role_id,
             sector_ids
         } = JSON.parse(req.body.rfqData);
 
@@ -54,12 +53,6 @@ async function createRFQOpportunity(req, res) {
             });
         }
 
-        if (!target_role_id) {
-            return res.status(400).json({
-                success: false,
-                message: "target_role_id is required"
-            });
-        }
 
         if (!Array.isArray(sector_ids) || sector_ids.length === 0) {
             return res.status(400).json({
@@ -69,27 +62,7 @@ async function createRFQOpportunity(req, res) {
         }
 
 
-        // -------------------------------------------------
-        // CHECK THAT TARGET ROLE IS SMME
-        // -------------------------------------------------
-
-        const [roles] = await connection.execute(
-            `
-            SELECT role_id
-            FROM role
-            WHERE role_id = ?
-            AND role_name = 'SMME'
-            `,
-            [target_role_id]
-        );
-
-        if (roles.length === 0) {
-
-            return res.status(400).json({
-                success: false,
-                message: "RFQ target role must be SMME"
-            });
-        }
+        
 
 
         // -------------------------------------------------
@@ -136,8 +109,7 @@ async function createRFQOpportunity(req, res) {
                 description,
                 closing_date,
                 location,
-                published_by,
-                target_role_id
+                published_by
             },
             req.file
         );
@@ -175,7 +147,6 @@ async function createRFQOpportunity(req, res) {
                 closing_date: rfq.closing_date,
                 location: rfq.location,
                 published_by: rfq.published_by,
-                target_role_id: rfq.target_role_id,
                 sector_ids,
                 status: rfq.status,
                 image_url: rfq.image_url
@@ -202,30 +173,29 @@ async function createRFQOpportunity(req, res) {
 
 
 // =====================================================
-// GET RFQs FOR USER'S SECTOR
+// GET RFQs FOR LOGGED-IN USER'S SECTOR
 // =====================================================
 
 async function getUserRFQs(req, res) {
 
-    const connection = await db.getConnection();
+    let connection;
 
     try {
 
-        const { userId } = req.params;
-
-
         // -------------------------------------------------
-        // VALIDATE USER ID
+        // GET USER ID FROM JWT TOKEN
         // -------------------------------------------------
+
+        const userId = req.user?.user_id;
 
         if (!userId) {
-
-            return res.status(400).json({
+            return res.status(401).json({
                 success: false,
-                message: "User ID is required"
+                message: "Unauthorized: User ID not found in token"
             });
         }
 
+        connection = await db.getConnection();
 
         // -------------------------------------------------
         // CHECK USER EXISTS
@@ -241,23 +211,20 @@ async function getUserRFQs(req, res) {
         );
 
         if (users.length === 0) {
-
             return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
         }
 
-
         // -------------------------------------------------
-        // GET RFQs
+        // GET RFQs BASED ON USER'S SECTOR
         // -------------------------------------------------
 
         const rfqs = await getRFQsForUser(
             connection,
             userId
         );
-
 
         // -------------------------------------------------
         // RESPONSE
@@ -278,16 +245,16 @@ async function getUserRFQs(req, res) {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve RFQ opportunities",
-            error: error.message
+            message: "Failed to retrieve RFQ opportunities"
         });
 
     } finally {
 
-        connection.release();
+        if (connection) {
+            connection.release();
+        }
     }
 }
-
 
 // =====================================================
 // GET RFQs APPLIED FOR BY USER
@@ -376,6 +343,36 @@ async function getMyAppliedRFQs(req, res) {
     }
 }
 
+    
+
+
+// =====================================================
+// FETCH ALL RFQS CONTROLLER
+// =====================================================
+
+const getAllRFQs = async (req, res) => {
+    try {
+        const rfqs = await getAllRFQsService();
+
+        return res.status(200).json({
+            success: true,
+            message: "RFQs retrieved successfully",
+            total: rfqs.length,
+            data: rfqs
+        });
+
+    } catch (error) {
+        console.error("Get RFQs error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve RFQs"
+        });
+    }
+};
+
+
+
 
 // =====================================================
 // EXPORT
@@ -384,5 +381,5 @@ async function getMyAppliedRFQs(req, res) {
 module.exports = {
     createRFQOpportunity,
     getUserRFQs,
-    getMyAppliedRFQs
+    getMyAppliedRFQs,getAllRFQs
 };
