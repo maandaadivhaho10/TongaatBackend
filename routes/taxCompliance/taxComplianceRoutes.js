@@ -9,9 +9,9 @@ const {
 );
 
 // Keep your existing working middleware imports
-const {
+const 
     authenticateToken
-} = require("../../middleware/authMiddleware");
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles

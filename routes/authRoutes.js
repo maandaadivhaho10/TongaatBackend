@@ -10,9 +10,9 @@ const uploadDocuments =
     const {
     registerSmme
 } = require("../controllers/SMMERegister/smmeController");
-const {
+const 
     authenticateToken
-} = require("../middleware/authMiddleware");
+ = require("../middleware/authMiddleware");
 
 const {
     authorizeRoles

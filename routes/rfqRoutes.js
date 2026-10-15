@@ -9,9 +9,9 @@ const {
 const {
     applyForRFQ
 } = require("../controllers/rfqResponseController");
-const {
+const 
     authenticateToken
-} = require("../middleware/authMiddleware");
+ = require("../middleware/authMiddleware");
 
 const {
     authorizeRoles

@@ -5,9 +5,8 @@ const {
     registerBusinessProfile
 } = require("../../controllers/SMMERegister/businessProfileController");
 
-const {
-    authenticateToken
-} = require("../../middleware/authMiddleware");
+const     authenticateToken
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles

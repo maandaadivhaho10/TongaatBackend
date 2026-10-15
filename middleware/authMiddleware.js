@@ -1,35 +1,40 @@
+
 const jwt = require("jsonwebtoken");
 
 const authenticateToken = (req, res, next) => {
-    try {
-        const authHeader = req.headers.authorization;
+  const authorization = req.headers.authorization;
 
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(401).json({
-                success: false,
-                message: "Access denied. No token provided."
-            });
-        }
+  if (!authorization?.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      message: "Access token is required",
+    });
+  }
 
-        const token = authHeader.split(" ")[1];
+  const token = authorization.slice(7);
 
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET,
+      { algorithms: ["HS256"] }
+    );
 
-        req.user = decoded;
+    req.user = {
+      user_id: decoded.user_id,
+      role_id: decoded.role_id,
+    };
 
-        next();
-
-    } catch (error) {
-        return res.status(401).json({
-            success: false,
-            message: "Invalid or expired token"
-        });
-    }
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message:
+        error.name === "TokenExpiredError"
+          ? "Access token expired"
+          : "Invalid access token",
+    });
+  }
 };
 
-module.exports = {
-    authenticateToken
-};
+module.exports = authenticateToken;

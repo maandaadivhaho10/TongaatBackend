@@ -1,10 +1,6 @@
 const express = require("express");
 const pool = require("./config/database");
-
 const authRoutes = require("./routes/authRoutes");
-const mentorshipRoutes = require("./routes/mentorshiproutes");
-const meetingRoutes = require("./routes/meetingRoutes");
-const meetingParticipantRoutes = require("./routes/meetingParticipantRoutes");
 const opportunityRoutes = require("./routes/opportunityRoutes");
 const opportunityResponseRoutes = require("./routes/opportunityResponseRoutes");
 const otpRoutes = require("./routes/otpRoutes");
@@ -33,21 +29,35 @@ const rfqDetailsRoutes = require(
 const esdActivityRoutes = require(
   "./routes/ESDActities/esdActivityRoutes"
 );
-
+const refreshRoutes = require("./routes/RefreshTokenRoutes/refreshRoutes");
+const authRoutes1 = require("./routes/AuthRoutes/authRoutes");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+
 const app = express();
 
-app.use(express.json());
+// CORS configuration
 app.use(
   cors({
-    origin: "*",
+    origin: "http://localhost:5173",
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ======================== AUTH ========================
+// Middleware
+app.use(cookieParser());
+app.use(express.json());
 
-app.use("/api/auth", authRoutes);
+// ======================== AUTH ========================
+// Authentication routes
+app.use("/api/auth", authRoutes1);
+
+
+app.use("/api/auth1", authRoutes);
+
+// app.use("/api/auth", refreshRoutes);
 
 app.use("/api/otp", otpRoutes);
 
@@ -70,19 +80,11 @@ app.use(
 
 
 
-app.use("/advisory", advisoryRoutes);
-
-app.use("/api/mentorship", mentorshipRoutes);
+app.use("/api/advisory", advisoryRoutes);
 
 
-// ======================== MEETINGS ========================
 
-app.use("/api/meetings", meetingRoutes);
 
-app.use(
-    "/api/meeting-participants",
-    meetingParticipantRoutes
-);
 
 
 // ======================== OPPORTUNITIES ========================
@@ -125,7 +127,7 @@ app.use(
     "/api/suppliers",
     supplierRoutes
 );
-app.use("/tax-compliance", taxComplianceRoutes);
+app.use("api/tax-compliance", taxComplianceRoutes);
 
 // ======================== SERVER ========================
 

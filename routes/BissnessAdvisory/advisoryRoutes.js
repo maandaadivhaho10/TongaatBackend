@@ -6,9 +6,8 @@ const {
 } = require("../../controllers/BissnessAdvisory/advisoryController");
 
 
-const {
-    authenticateToken
-} = require("../../middleware/authMiddleware");
+const 
+    authenticateToken = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles
@@ -16,7 +15,7 @@ const {
 
 router.post(
     "/",
-    authenticateToken,
+    authenticateToken,authorizeRoles(1,2, 3, 4),
     createAdvisoryRequest
 );
 router.get(

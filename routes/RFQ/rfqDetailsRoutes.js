@@ -6,9 +6,9 @@ const router = express.Router();
 const {
     getRFQDetails
 } = require("../../controllers/RFQ/rfqDetailsController");
-const {
+const 
     authenticateToken
-} = require("../../middleware/authMiddleware");
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles

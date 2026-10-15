@@ -8,7 +8,12 @@ const {
     getTenderByIdController
 } = require("../controllers/tenderController");
 const upload = require("../middleware/upload");
+const 
+    authenticateToken = require("../middleware/authMiddleware");
 
+const {
+    authorizeRoles
+} = require("../middleware/roleMiddleware");
 
 // =====================================================
 // CREATE TENDER
@@ -16,7 +21,7 @@ const upload = require("../middleware/upload");
 // =====================================================
 
 router.post(
-    "/",upload.single("opportunity_document"),
+    "/",upload.single("opportunity_document"),authenticateToken,authorizeRoles(2,3),
     createTenderController
 );
 
@@ -27,7 +32,7 @@ router.post(
 // =====================================================
 
 router.get(
-    "/",
+    "/",authenticateToken,authorizeRoles(1,2,3),
     getAllTendersController
 );
 

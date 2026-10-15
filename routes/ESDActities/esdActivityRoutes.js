@@ -12,9 +12,9 @@ const {
 
 // Adjust the middleware paths to match
 // your existing project structure.
-const {
+const 
     authenticateToken
-} = require("../../middleware/authMiddleware");
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles

@@ -7,9 +7,9 @@ const {
     registerBusinessMaturity
 } = require("../../controllers/SMMERegister/businessMaturityController");
 
-const {
+const 
     authenticateToken
-} = require("../../middleware/authMiddleware");
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles

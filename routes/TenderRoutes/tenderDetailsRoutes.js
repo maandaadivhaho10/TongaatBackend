@@ -8,9 +8,9 @@ const {
 } = require("../../controllers/TenderController/tenderDetailsController");
 
 // Keep your existing working middleware imports
-const {
+const 
     authenticateToken
-} = require("../../middleware/authMiddleware");
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles
