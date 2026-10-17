@@ -18,7 +18,6 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate credentials
     if (
       typeof email !== "string" ||
       typeof password !== "string" ||
@@ -31,7 +30,7 @@ const login = async (req, res) => {
       });
     }
 
-    // Retrieve user including ID and phone number
+    // Retrieve user including gender
     const [rows] = await db.query(
       `SELECT
           user_id,
@@ -39,11 +38,12 @@ const login = async (req, res) => {
           first_name,
           last_name,
           id_number,
+          gender,
           phone_number,
           email,
           password_hash,
           status
-       FROM user
+       FROM \`user\`
        WHERE email = ?
        LIMIT 1`,
       [email.trim().toLowerCase()]
@@ -58,7 +58,6 @@ const login = async (req, res) => {
 
     const user = rows[0];
 
-    // Verify password
     const validPassword = await bcrypt.compare(
       password,
       user.password_hash
@@ -71,7 +70,6 @@ const login = async (req, res) => {
       });
     }
 
-    // Check account status
     if (user.status !== "ACTIVE") {
       return res.status(403).json({
         success: false,
@@ -79,21 +77,18 @@ const login = async (req, res) => {
       });
     }
 
-    // Generate access and refresh tokens
     const accessToken = createAccessToken(user);
 
     const refreshToken = await createRefreshToken(
       user.user_id
     );
 
-    // Save refresh token in HttpOnly cookie
     res.cookie(
       "refreshToken",
       refreshToken,
       refreshCookieOptions()
     );
 
-    // Return access token and user information
     return res.status(200).json({
       success: true,
       message: "Login successful",
@@ -107,6 +102,7 @@ const login = async (req, res) => {
           first_name: user.first_name,
           last_name: user.last_name,
           id_number: user.id_number,
+          gender: user.gender,
           phone_number: user.phone_number,
           email: user.email,
         },
@@ -137,7 +133,6 @@ const refreshAccessToken = async (req, res) => {
   }
 
   try {
-    // Validate old refresh token and rotate it
     const result = await rotateRefreshToken(token);
 
     if (!result) {
@@ -152,14 +147,47 @@ const refreshAccessToken = async (req, res) => {
       });
     }
 
-    // Store new refresh token
     res.cookie(
       "refreshToken",
       result.refreshToken,
       refreshCookieOptions()
     );
 
-    // Return new access token and user details
+    // Retrieve current user details, including gender
+    const [rows] = await db.query(
+      `SELECT
+          user_id,
+          role_id,
+          first_name,
+          last_name,
+          id_number,
+          gender,
+          phone_number,
+          email,
+          status
+       FROM \`user\`
+       WHERE user_id = ?
+       LIMIT 1`,
+      [result.user.user_id]
+    );
+
+    if (
+      !rows.length ||
+      rows[0].status !== "ACTIVE"
+    ) {
+      res.clearCookie(
+        "refreshToken",
+        clearRefreshCookieOptions()
+      );
+
+      return res.status(401).json({
+        success: false,
+        message: "User session is no longer valid",
+      });
+    }
+
+    const user = rows[0];
+
     return res.status(200).json({
       success: true,
       message: "Access token refreshed successfully",
@@ -167,13 +195,14 @@ const refreshAccessToken = async (req, res) => {
       token: result.accessToken,
 
       user: {
-        user_id: result.user.user_id,
-        role_id: result.user.role_id,
-        first_name: result.user.first_name,
-        last_name: result.user.last_name,
-        id_number: result.user.id_number,
-        phone_number: result.user.phone_number,
-        email: result.user.email,
+        user_id: user.user_id,
+        role_id: user.role_id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        id_number: user.id_number,
+        gender: user.gender,
+        phone_number: user.phone_number,
+        email: user.email,
       },
     });
 
@@ -194,12 +223,10 @@ const logoutUser = async (req, res) => {
   const token = req.cookies?.refreshToken;
 
   try {
-    // Revoke refresh token in database
     if (token) {
       await revokeRefreshToken(token);
     }
 
-    // Remove refresh cookie
     res.clearCookie(
       "refreshToken",
       clearRefreshCookieOptions()
@@ -232,16 +259,16 @@ const getCurrentUser = async (req, res) => {
           first_name,
           last_name,
           id_number,
+          gender,
           phone_number,
           email,
           status
-       FROM user
+       FROM \`user\`
        WHERE user_id = ?
        LIMIT 1`,
       [req.user.user_id]
     );
 
-    // Validate user account
     if (
       !rows.length ||
       rows[0].status !== "ACTIVE"
@@ -252,7 +279,6 @@ const getCurrentUser = async (req, res) => {
       });
     }
 
-    // Exclude internal account status
     const { status, ...user } = rows[0];
 
     return res.status(200).json({

@@ -29,8 +29,13 @@ const rfqDetailsRoutes = require(
 const esdActivityRoutes = require(
   "./routes/ESDActities/esdActivityRoutes"
 );
-const refreshRoutes = require("./routes/RefreshTokenRoutes/refreshRoutes");
+
+
 const authRoutes1 = require("./routes/AuthRoutes/authRoutes");
+const genderRoutes = require("./routes/GenderRoutes/genderRoutes");
+const dashboardStatsRoutes = require(
+  "./routes/DashboardstatsRoutes/dashboardStatsRoutes"
+);
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
@@ -128,6 +133,10 @@ app.use(
     supplierRoutes
 );
 app.use("api/tax-compliance", taxComplianceRoutes);
+
+// ========================Stats ========================
+app.use("/api/dashboard", genderRoutes);
+app.use("/api/dashboard", dashboardStatsRoutes);
 
 // ======================== SERVER ========================
 
