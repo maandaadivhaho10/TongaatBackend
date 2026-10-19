@@ -70,10 +70,6 @@ const authRoutes1 = require(
   "./routes/AuthRoutes/authRoutes"
 );
 
-const genderRoutes = require(
-  "./routes/GenderRoutes/genderRoutes"
-);
-
 const dashboardStatsRoutes = require(
   "./routes/DashboardstatsRoutes/dashboardStatsRoutes"
 );
@@ -247,10 +243,7 @@ app.use(
 // DASHBOARD ROUTES
 // ======================================================
 
-app.use(
-  "/api/dashboard",
-  genderRoutes
-);
+
 
 app.use(
   "/api/dashboard",

@@ -19,8 +19,6 @@ const {
 
 router.get(
   "/statistics",
-  authenticateToken,
-  authorizeRoles(2),
   fetchDashboardStatistics
 );
 

@@ -7,6 +7,13 @@ const {
     getResponsesByTenderController,
     getTenderResponseByIdController
 } = require("../controllers/tenderResponseController");
+const 
+    authenticateToken
+ = require("../middleware/authMiddleware");
+
+const {
+    authorizeRoles
+} = require("../middleware/roleMiddleware");
 
 
 // =====================================================
@@ -15,7 +22,7 @@ const {
 // =====================================================
 
 router.post(
-    "/apply",
+    "/apply",authenticateToken,authorizeRoles(1,2),
     createTenderResponseController
 );
 

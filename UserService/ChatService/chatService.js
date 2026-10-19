@@ -187,6 +187,36 @@ const getDirectSupportChat = async (userId) => {
   if (!rows.length) return { conversation: null, total_messages: 0, messages: [] };
   return getConversationMessages(rows[0].conversation_id, userId, 1);
 };
+// =====================================================
+// ED TEAM: FIND OR CREATE SUPPLIER DIRECT CONVERSATION
+// =====================================================
+
+const findOrCreateSupplierConversation = async (
+  supplierUserId
+) => {
+  const userId = Number(supplierUserId);
+
+  if (
+    !Number.isSafeInteger(userId) ||
+    userId <= 0
+  ) {
+    throw httpError("Invalid supplier user ID", 400);
+  }
+
+  // createConversation already:
+  // 1. Verifies the user has role_id = 1.
+  // 2. Checks whether a conversation exists.
+  // 3. Creates one only when necessary.
+  // 4. Adds the supplier to chat_conversation_member.
+  // 5. Uses a transaction and locks the supplier row.
+
+  const conversation = await createConversation(
+    userId,
+    "ED Team Support"
+  );
+
+  return conversation;
+};
 
 module.exports = {
   createConversation,
@@ -195,5 +225,5 @@ module.exports = {
   sendConversationMessage,
   getConversationById,
   sendDirectSupportMessage,
-  getDirectSupportChat,
+  getDirectSupportChat,findOrCreateSupplierConversation
 };

@@ -1,11 +1,23 @@
 const {
     createAdvisoryService,getAllBusinessAdvisoryRequests
 } = require("../../UserService/BissnessAdvisory/advisoryService");
+const transporter = require("../../config/email");
+const db = require("../../config/database");
 
+// Keep your existing imports for db, transporter,
+// and createAdvisoryService.
+
+// =====================================================
+// CREATE BUSINESS ADVISORY REQUEST
+// =====================================================
 
 const createAdvisoryRequest = async (req, res) => {
     try {
         console.log("Advisory request received");
+
+        // =================================================
+        // GET USER ID FROM TOKEN
+        // =================================================
 
         const user_id = req.user?.user_id;
 
@@ -16,12 +28,20 @@ const createAdvisoryRequest = async (req, res) => {
             });
         }
 
+        // =================================================
+        // REQUEST BODY
+        // =================================================
+
         const {
             subject,
             description,
             request_date,
             preferred_date
         } = req.body;
+
+        // =================================================
+        // VALIDATION
+        // =================================================
 
         if (
             typeof subject !== "string" ||
@@ -44,13 +64,45 @@ const createAdvisoryRequest = async (req, res) => {
             !Number.isNaN(Date.parse(value)) &&
             new Date(value).toISOString().slice(0, 10) === value;
 
-        if (!isValidDate(date) ||
-            (preferred_date != null && !isValidDate(preferred_date))) {
+        if (
+            !isValidDate(date) ||
+            (preferred_date != null && !isValidDate(preferred_date))
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Dates must be valid YYYY-MM-DD values"
             });
         }
+
+        // =================================================
+        // GET USER DETAILS
+        // =================================================
+
+        const [users] = await db.query(
+            `
+            SELECT
+                user_id,
+                first_name,
+                last_name,
+                email
+            FROM user
+            WHERE user_id = ?
+            `,
+            [user_id]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const user = users[0];
+
+        // =================================================
+        // CREATE ADVISORY REQUEST
+        // =================================================
 
         console.log("Creating advisory request for:", user_id);
 
@@ -64,26 +116,114 @@ const createAdvisoryRequest = async (req, res) => {
 
         console.log("Advisory created successfully");
 
+        // =================================================
+        // SEND CONFIRMATION EMAIL
+        // =================================================
+
+        let emailSent = false;
+
+        try {
+
+            await transporter.sendMail({
+
+                from: process.env.SMTP_FROM || process.env.SMTP_USER,
+
+                to: user.email,
+
+                subject: "Business Advisory Request Confirmation - Tongaat Hulett",
+
+                text: `
+Dear ${user.first_name} ${user.last_name},
+
+Thank you for submitting your Business Advisory Request through the Tongaat Hulett Enterprise and Supplier Development Portal.
+
+We are pleased to confirm that your request has been successfully received.
+
+REQUEST DETAILS
+
+Subject: ${subject.trim()}
+
+Description:
+${description.trim()}
+
+Request Date: ${date}
+
+Preferred Date: ${preferred_date || "Not specified"}
+
+Status: PENDING
+
+Our Enterprise and Supplier Development Team will review your request and contact you regarding the next steps.
+
+Please note that your preferred date is subject to confirmation by the team.
+
+Thank you for using the Tongaat Hulett Enterprise and Supplier Development Portal.
+
+Kind regards,
+Tongaat Hulett Enterprise and Supplier Development Team
+                `.trim()
+
+            });
+
+            emailSent = true;
+
+            console.log(
+                "Business advisory confirmation email sent:",
+                user.email
+            );
+
+        } catch (emailError) {
+
+            console.error(
+                "Business advisory confirmation email failed:",
+                emailError
+            );
+
+        }
+
+        // =================================================
+        // SUCCESS RESPONSE
+        // =================================================
+
         return res.status(201).json({
+
             success: true,
-            message: "Business advisory request submitted successfully",
-            data: result
+
+            message: emailSent
+                ? "Business advisory request submitted successfully. Confirmation email sent."
+                : "Business advisory request submitted successfully, but confirmation email could not be sent.",
+
+            data: result,
+
+            email_sent: emailSent
+
         });
 
     } catch (error) {
+
         console.error("Advisory request error:", error);
 
+        // =================================================
+        // FOREIGN KEY ERROR
+        // =================================================
+
         if (error.code === "ER_NO_REFERENCED_ROW_2") {
+
             return res.status(400).json({
                 success: false,
                 message: "Authenticated user does not exist"
             });
+
         }
+
+        // =================================================
+        // SERVER ERROR
+        // =================================================
 
         return res.status(500).json({
             success: false,
             message: "Failed to submit advisory request"
         });
+
     }
 };
 
@@ -100,21 +240,10 @@ const getAllAdvisoryRequests = async (req, res) => {
         });
 
     } catch (error) {
-       console.error("================================");
-    console.error("BUSINESS ADVISORY API ERROR");
-    console.error("Message:", error.message);
-    console.error("Code:", error.code);
-    console.error("SQL Message:", error.sqlMessage);
-    console.error("SQL:", error.sql);
-    console.error("================================");
-
-    return res.status(500).json({
-        success: false,
-        message: "Failed to fetch business advisory requests",
-        error: process.env.NODE_ENV === "production"
-            ? undefined
-            : error.sqlMessage || error.message
-    });
+        console.error(
+            "Error fetching business advisory requests:",
+            error
+        );
 
         return res.status(500).json({
             success: false,

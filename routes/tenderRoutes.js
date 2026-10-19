@@ -9,7 +9,8 @@ const {
 } = require("../controllers/tenderController");
 const upload = require("../middleware/upload");
 const 
-    authenticateToken = require("../middleware/authMiddleware");
+    authenticateToken
+ = require("../middleware/authMiddleware");
 
 const {
     authorizeRoles

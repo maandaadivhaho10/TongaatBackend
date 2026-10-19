@@ -5,7 +5,7 @@ const {
 const connectionString =
     process.env.AZURE_STORAGE_CONNECTION_STRING;
 
-const containerName = "opportunities";
+const containerName = "opportunties";
 
 const blobServiceClient =
     BlobServiceClient.fromConnectionString(connectionString);

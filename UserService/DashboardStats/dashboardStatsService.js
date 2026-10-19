@@ -1,4 +1,3 @@
-
 const db = require("../../config/database");
 
 const getDashboardStatistics = async () => {
@@ -6,19 +5,25 @@ const getDashboardStatistics = async () => {
 
   try {
     const queries = {
-      // Total RFQs
+      // =====================================================
+      // TOTAL RFQs
+      // =====================================================
       total_rfqs: `
         SELECT COUNT(*) AS total
         FROM rfqopportunity
       `,
 
-      // Total Tenders
+      // =====================================================
+      // TOTAL TENDERS
+      // =====================================================
       total_tenders: `
         SELECT COUNT(*) AS total
         FROM tenderopportunity
       `,
 
-      // Suppliers with both business profile and maturity
+      // =====================================================
+      // TOTAL REGISTERED SUPPLIERS
+      // =====================================================
       total_registered_suppliers: `
         SELECT COUNT(DISTINCT bp.business_id) AS total
         FROM business_profile bp
@@ -29,16 +34,67 @@ const getDashboardStatistics = async () => {
         WHERE u.role_id = 1
       `,
 
-      // Total Business Advisory Requests
-      total_business_advisory: `
-        SELECT COUNT(*) AS total
-        FROM advisory_request
+      // =====================================================
+      // MALE SUPPLIERS
+      // =====================================================
+      total_male_suppliers: `
+        SELECT COUNT(DISTINCT u.user_id) AS total
+        FROM \`user\` u
+        INNER JOIN business_profile bp
+          ON bp.user_id = u.user_id
+        INNER JOIN business_maturity bm
+          ON bm.business_id = bp.business_id
+        WHERE u.role_id = 1
+          AND LOWER(TRIM(u.gender)) IN ('male', 'm')
       `,
 
-      // Total ESD Activities
+      // =====================================================
+      // FEMALE SUPPLIERS
+      // =====================================================
+      total_female_suppliers: `
+        SELECT COUNT(DISTINCT u.user_id) AS total
+        FROM \`user\` u
+        INNER JOIN business_profile bp
+          ON bp.user_id = u.user_id
+        INNER JOIN business_maturity bm
+          ON bm.business_id = bp.business_id
+        WHERE u.role_id = 1
+          AND LOWER(TRIM(u.gender)) IN ('female', 'f')
+      `,
+
+      // =====================================================
+      // OTHER / UNSPECIFIED GENDER
+      // =====================================================
+      total_other_suppliers: `
+        SELECT COUNT(DISTINCT u.user_id) AS total
+        FROM \`user\` u
+        INNER JOIN business_profile bp
+          ON bp.user_id = u.user_id
+        INNER JOIN business_maturity bm
+          ON bm.business_id = bp.business_id
+        WHERE u.role_id = 1
+          AND (
+            u.gender IS NULL
+            OR LOWER(TRIM(u.gender)) NOT IN (
+              'male', 'm', 'female', 'f'
+            )
+          )
+      `,
+
+      // =====================================================
+      // TOTAL BUSINESS ADVISORY REQUESTS
+      // =====================================================
+      total_business_advisory: `
+        SELECT COUNT(*) AS total
+        FROM business_advisory_request
+      `,
+
+      // =====================================================
+      // TOTAL ESD ACTIVITIES
+      // =====================================================
       total_esd_activities: `
         SELECT COUNT(*) AS total
-        FROM esd_activity
+        FROM esd_activities
       `
     };
 
@@ -62,6 +118,7 @@ const getDashboardStatistics = async () => {
       "Error fetching dashboard statistics:",
       error
     );
+
     throw error;
 
   } finally {

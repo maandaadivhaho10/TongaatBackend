@@ -5,7 +5,7 @@ const {
   getChatMessages,
   sendChatMessage,
   getDirectChat,
-  sendDirectChatMessage,
+  sendDirectChatMessage, openSupplierConversation,
 } = require("../../controllers/ChatController/chatController");
 const authenticateToken = require("../../middleware/authMiddleware");
 const { authorizeRoles } = require("../../middleware/roleMiddleware");

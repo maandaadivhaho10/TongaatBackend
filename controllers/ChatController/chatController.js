@@ -5,7 +5,7 @@ const {
   sendConversationMessage,
   getConversationById,
   sendDirectSupportMessage,
-  getDirectSupportChat,
+  getDirectSupportChat, findOrCreateSupplierConversation
 } = require("../../UserService/ChatService/chatService");
 
 const validId = (value) => Number.isSafeInteger(Number(value)) && Number(value) > 0;
@@ -126,11 +126,111 @@ const sendDirectChatMessage = async (req, res) => {
   } catch (error) { return sendError(res, error, "Failed to send direct message"); }
 };
 
+// =====================================================
+// ED TEAM: OPEN OR CREATE SUPPLIER CONVERSATION
+// =====================================================
+
+const openSupplierConversation = async (req, res) => {
+  try {
+    const edUserId = Number(req.user?.user_id);
+    const roleId = Number(req.user?.role_id);
+
+    const supplierUserId = Number(
+      req.body?.supplier_user_id
+    );
+
+    // =================================================
+    // AUTHENTICATION
+    // =================================================
+
+    if (!validId(edUserId)) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authentication information",
+      });
+    }
+
+    // =================================================
+    // ED TEAM AUTHORIZATION
+    // =================================================
+
+    if (roleId !== 2) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Only ED team members can open supplier conversations",
+      });
+    }
+
+    // =================================================
+    // VALIDATE SUPPLIER USER ID
+    // =================================================
+
+    if (!validId(supplierUserId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid supplier_user_id is required",
+      });
+    }
+
+    // =================================================
+    // FIND EXISTING OR CREATE NEW CONVERSATION
+    // =================================================
+
+    const conversation =
+      await findOrCreateSupplierConversation(
+        supplierUserId
+      );
+
+    // =================================================
+    // SOCKET.IO NOTIFICATION
+    // =================================================
+
+    try {
+      const io = req.app.get("io");
+
+      if (io) {
+        io.to(`user:${supplierUserId}`).emit(
+          "chat:new_conversation",
+          conversation
+        );
+
+        io.to("ed:support").emit(
+          "chat:new_conversation",
+          conversation
+        );
+      }
+    } catch (socketError) {
+      console.error(
+        "Socket conversation notification error:",
+        socketError
+      );
+    }
+
+    // =================================================
+    // SUCCESS RESPONSE
+    // =================================================
+
+    return res.status(200).json({
+      success: true,
+      message: "Supplier conversation ready",
+      data: conversation,
+    });
+
+  } catch (error) {
+    return sendError(
+      res,
+      error,
+      "Failed to open supplier conversation"
+    );
+  }
+};
+
 module.exports = {
   createChatConversation,
   getChatConversations,
   getChatMessages,
   sendChatMessage,
   getDirectChat,
-  sendDirectChatMessage,
+  sendDirectChatMessage,openSupplierConversation
 };
