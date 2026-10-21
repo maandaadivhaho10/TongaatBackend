@@ -6,7 +6,9 @@ const {
 } = require(
   "../../controllers/DashboardStats/dashboardStatsController"
 );
-
+const {
+    getSupplierCount
+} = require("../../controllers/DashboardStats/dashboardStatsController");
 const 
   authenticateToken
 = require("../../middleware/authMiddleware");
@@ -19,7 +21,11 @@ const {
 
 router.get(
   "/statistics",
+  authenticateToken,
+  authorizeRoles(2),
   fetchDashboardStatistics
 );
+
+router.get("/count", getSupplierCount);
 
 module.exports = router;

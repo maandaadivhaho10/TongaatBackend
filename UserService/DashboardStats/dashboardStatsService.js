@@ -126,6 +126,24 @@ const getDashboardStatistics = async () => {
   }
 };
 
+const getRegisteredSuppliersCount = async () => {
+    const query = `
+        SELECT
+            COUNT(DISTINCT bp.business_id) AS total_registered_suppliers
+        FROM business_profile bp
+        INNER JOIN business_maturity bm
+            ON bp.business_id = bm.business_id
+        INNER JOIN user u
+            ON bp.user_id = u.user_id
+        WHERE u.role_id = 1
+    `;
+
+    const [rows] = await db.query(query);
+
+    return rows[0].total_registered_suppliers;
+};
+
+
 module.exports = {
-  getDashboardStatistics
+  getDashboardStatistics,getRegisteredSuppliersCount
 };

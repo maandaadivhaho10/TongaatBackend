@@ -78,6 +78,9 @@ const chatRoutes = require(
   "./routes/ChatRoutes/chatRoutes"
 );
 
+const landingOpportunityRoutes =
+    require("./routes/LandingOpportunityRoutes/landingOpportunityRoutes");
+
 // ======================================================
 // INITIALIZE EXPRESS
 // ======================================================
@@ -264,6 +267,9 @@ app.use(
   chatRoutes
 );
 
+
+//landing page Opportunities
+app.use("/api/landing/opportunities", landingOpportunityRoutes);
 // ======================================================
 // CREATE HTTP SERVER
 // ======================================================

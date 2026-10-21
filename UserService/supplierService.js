@@ -35,6 +35,9 @@ async function getAllSuppliers() {
             bp.has_vat_registration,
             bp.vat_registration_number,
 
+            -- TAX COMPLIANCE PIN
+            bp.tax_compliance_pin,
+
             -- TAX COMPLIANCE PIN AVAILABILITY
             CASE
                 WHEN NULLIF(TRIM(bp.tax_compliance_pin), '')
@@ -245,6 +248,9 @@ async function getAllSuppliers() {
         supplier.has_tax_compliance_pin =
             Boolean(supplier.has_tax_compliance_pin);
 
+        // The actual tax_compliance_pin is already
+        // returned from the SQL query.
+
         // ---------------------------------------------
         // FINANCIAL STATEMENTS
         // ---------------------------------------------
@@ -314,6 +320,7 @@ async function getAllSuppliers() {
 
     return suppliers;
 }
+
 //=================================================
 // GET SUPPLIER BY USER ID
 // =====================================================
