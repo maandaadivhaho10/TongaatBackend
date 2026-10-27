@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 
 const pool = require("./config/database");
+const fundingRoutes = require("./routes/fundingRoutes/fundingRoutes");
 
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -17,12 +18,6 @@ const initializeChatSocket = require("./socket/chatSocket");
 // ======================================================
 
 const authRoutes = require("./routes/authRoutes");
-
-const opportunityRoutes = require("./routes/opportunityRoutes");
-
-const opportunityResponseRoutes = require(
-  "./routes/opportunityResponseRoutes"
-);
 
 const otpRoutes = require("./routes/otpRoutes");
 
@@ -80,6 +75,7 @@ const chatRoutes = require(
 
 const landingOpportunityRoutes =
     require("./routes/LandingOpportunityRoutes/landingOpportunityRoutes");
+    const contactRoutes = require("./routes/ContactUs/contactRoutes");
 
 // ======================================================
 // INITIALIZE EXPRESS
@@ -167,19 +163,8 @@ app.use(
   advisoryRoutes
 );
 
-// ======================================================
-// OPPORTUNITY ROUTES
-// ======================================================
 
-app.use(
-  "/api/opportunities",
-  opportunityRoutes
-);
 
-app.use(
-  "/api",
-  opportunityResponseRoutes
-);
 
 // ======================================================
 // RFQ ROUTES
@@ -270,9 +255,16 @@ app.use(
 
 //landing page Opportunities
 app.use("/api/landing/opportunities", landingOpportunityRoutes);
+
+
+
+//Contact Us
+app.use("/api/contact", contactRoutes);
 // ======================================================
 // CREATE HTTP SERVER
 // ======================================================
+
+app.use("/api/funding", fundingRoutes);
 
 // Socket.IO needs access to the HTTP server.
 // Instead of app.listen(), we create an HTTP server.

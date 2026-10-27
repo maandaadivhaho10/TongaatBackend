@@ -1,6 +1,6 @@
 
 const {
-    getTenderWithResponses
+    getTenderWithResponses,getAppliedTendersByUserId
 } = require("../../UserService/Tender/tenderDetailsService");
 
 // =====================================================
@@ -69,7 +69,50 @@ async function getTenderDetails(req, res) {
         });
     }
 }
+// controllers/tenderApplicationController.js
+
+
+
+/**
+ * GET /api/tender-responses/my-applications/:userId
+ */
+async function getMyAppliedTenders(req, res) {
+  try {
+    const userId = Number(req.params.userId);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "A valid user ID is required." });
+    }
+
+    const requesterId = Number(req.user?.user_id);
+    const isAdmin = req.user?.role === "admin";
+
+    if (!isAdmin && requesterId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to view these applications.",
+      });
+    }
+
+    const applications = await getAppliedTendersByUserId(userId);
+
+    return res.status(200).json({
+      success: true,
+      count: applications.length,
+      data: applications,
+    });
+  } catch (error) {
+    console.error("getMyAppliedTenders error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch your tender applications.",
+    });
+  }
+}
+
 
 module.exports = {
-    getTenderDetails
+    getTenderDetails,getMyAppliedTenders
 };

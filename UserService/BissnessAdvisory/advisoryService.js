@@ -454,10 +454,138 @@ const getAllBusinessAdvisoryRequests = async () => {
     });
 };
 
-    
 
+ // ======================================================
+ // UPDATE BUSINESS ADVISORY REQUEST STATUS
+ // ======================================================
+
+const updateAdvisoryRequestStatusService = async (
+    advisory_request_id,
+    status
+) => {
+
+    // ==============================================
+    // 1. VALIDATE STATUS
+    // ==============================================
+
+    const allowedStatuses = [
+        "PENDING",
+        "IN REVIEW",
+        "COMPLETED"
+    ];
+
+    const normalizedStatus = String(status || "")
+        .trim()
+        .toUpperCase()
+        .replace(/_/g, " ");
+
+    if (!allowedStatuses.includes(normalizedStatus)) {
+        const error = new Error(
+            "Invalid status. Allowed statuses: PENDING, IN REVIEW, COMPLETED"
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // ==============================================
+    // 2. CHECK IF ADVISORY REQUEST EXISTS
+    // ==============================================
+
+    const [existingRequests] = await db.execute(
+        `
+        SELECT
+            advisory_request_id,
+            user_id,
+            subject,
+            status
+        FROM business_advisory_request
+        WHERE advisory_request_id = ?
+        LIMIT 1
+        `,
+        [advisory_request_id]
+    );
+
+    if (existingRequests.length === 0) {
+        const error = new Error(
+            "Business advisory request not found"
+        );
+        error.statusCode = 404;
+        throw error;
+    }
+
+    // ==============================================
+    // 3. UPDATE STATUS
+    // ==============================================
+
+    await db.execute(
+        `
+        UPDATE business_advisory_request
+        SET status = ?
+        WHERE advisory_request_id = ?
+        `,
+        [
+            normalizedStatus,
+            advisory_request_id
+        ]
+    );
+
+    // ==============================================
+    // 4. FETCH UPDATED REQUEST
+    // ==============================================
+
+    const [updatedRequests] = await db.execute(
+        `
+        SELECT
+            advisory_request_id,
+            user_id,
+            subject,
+            description,
+            request_date,
+            status
+        FROM business_advisory_request
+        WHERE advisory_request_id = ?
+        LIMIT 1
+        `,
+        [advisory_request_id]
+    );
+
+    return updatedRequests[0];
+};
+
+
+
+ // ======================================================
+ // GET BUSINESS ADVISORY REQUESTS FOR LOGGED-IN SUPPLIER
+ // ======================================================
+
+const getSupplierAdvisoryRequestsService = async (user_id) => {
+
+    const query = `
+        SELECT
+            advisory_request_id,
+            user_id,
+            subject,
+            description,
+            request_date,
+            preferred_date,
+            status,
+            created_at
+        FROM business_advisory_request
+        WHERE user_id = ?
+        ORDER BY
+            request_date DESC,
+            advisory_request_id DESC
+    `;
+
+    const [rows] = await db.execute(
+        query,
+        [user_id]
+    );
+
+    return rows;
+};
 
 
 module.exports = {
-    createAdvisoryService,getAllBusinessAdvisoryRequests
+    createAdvisoryService,getAllBusinessAdvisoryRequests,updateAdvisoryRequestStatusService,getSupplierAdvisoryRequestsService
 };

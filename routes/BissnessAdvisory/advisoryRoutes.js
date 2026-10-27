@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
-    createAdvisoryRequest,getAllAdvisoryRequests
+    createAdvisoryRequest,getAllAdvisoryRequests,updateAdvisoryRequestStatus,getSupplierAdvisoryRequests
 } = require("../../controllers/BissnessAdvisory/advisoryController");
 
 
@@ -23,6 +23,25 @@ router.get(
     authenticateToken,
     authorizeRoles(2, 3, 4),
     getAllAdvisoryRequests
+);
+
+
+router.patch(
+    "/requests/:id/status",authenticateToken,
+    authorizeRoles(2, 3, 4),
+    updateAdvisoryRequestStatus
+);
+
+
+// ======================================================
+// GET LOGGED-IN SUPPLIER BUSINESS ADVISORY REQUESTS
+// ======================================================
+
+router.get(
+    "/my-requests",
+    authenticateToken,
+    authorizeRoles(1),
+    getSupplierAdvisoryRequests
 );
 
 module.exports = router;

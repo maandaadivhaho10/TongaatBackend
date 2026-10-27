@@ -1,5 +1,5 @@
 const {
-    createAdvisoryService,getAllBusinessAdvisoryRequests
+    createAdvisoryService,getAllBusinessAdvisoryRequests,updateAdvisoryRequestStatusService,getSupplierAdvisoryRequestsService
 } = require("../../UserService/BissnessAdvisory/advisoryService");
 const transporter = require("../../config/email");
 const db = require("../../config/database");
@@ -253,6 +253,130 @@ const getAllAdvisoryRequests = async (req, res) => {
 };
 
 
+
+// Add to your existing service imports:
+// updateAdvisoryRequestStatusService
+
+// ======================================================
+// UPDATE BUSINESS ADVISORY REQUEST STATUS CONTROLLER
+// ======================================================
+
+const updateAdvisoryRequestStatus = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+        const { status } = req.body || {};
+
+        // ==============================================
+        // VALIDATE REQUEST ID
+        // ==============================================
+
+        if (
+            !/^[1-9]\d*$/.test(String(id)) ||
+            !Number.isSafeInteger(Number(id))
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid advisory request ID is required"
+            });
+        }
+
+        // ==============================================
+        // VALIDATE STATUS
+        // ==============================================
+
+        if (
+            typeof status !== "string" ||
+            !status.trim()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Status is required"
+            });
+        }
+
+        // ==============================================
+        // UPDATE ADVISORY REQUEST
+        // ==============================================
+
+        const updatedRequest =
+            await updateAdvisoryRequestStatusService(
+                Number(id),
+                status
+            );
+
+        return res.status(200).json({
+            success: true,
+            message: "Advisory request status updated successfully",
+            request: updatedRequest
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Update advisory request status error:",
+            error
+        );
+
+        return res.status(
+            error.statusCode || 500
+        ).json({
+            success: false,
+            message:
+                error.statusCode
+                    ? error.message
+                    : "Failed to update advisory request status"
+        });
+    }
+};
+
+
+// ======================================================
+// GET LOGGED-IN SUPPLIER ADVISORY REQUESTS
+// ======================================================
+
+const getSupplierAdvisoryRequests = async (req, res) => {
+
+    try {
+
+        // Get user ID from authenticated JWT
+        const user_id = req.user?.user_id;
+
+        if (!user_id) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized. Please log in."
+            });
+        }
+
+        // Fetch requests belonging to this supplier
+        const requests =
+            await getSupplierAdvisoryRequestsService(user_id);
+
+        return res.status(200).json({
+            success: true,
+            message: "Supplier advisory requests fetched successfully",
+            total_requests: requests.length,
+            requests
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Get supplier advisory requests error:",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch supplier advisory requests"
+        });
+    }
+};
+
+
+
 module.exports = {
-    createAdvisoryRequest,getAllAdvisoryRequests
+    createAdvisoryRequest,getAllAdvisoryRequests,updateAdvisoryRequestStatus,getSupplierAdvisoryRequests
 };

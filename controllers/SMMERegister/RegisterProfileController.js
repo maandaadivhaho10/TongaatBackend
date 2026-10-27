@@ -8,7 +8,7 @@ const {
 const {
     sendOtpEmail
 } = require("../../UserService/emailService");
-
+const { validateSAID } = require("../../utils/validateSAID");
 
 // =====================================================
 // CREATE ED TEAM USER
@@ -70,6 +70,21 @@ const createUser = async (req, res) => {
                     "Title, first name, last name, ID number, email and password are required"
             });
         }
+
+// =====================================================
+// VALIDATE SOUTH AFRICAN ID NUMBER
+// =====================================================
+
+const idValidation = validateSAID(id_number);
+
+if (!idValidation.valid) {
+    return res.status(400).json({
+        success: false,
+        message: idValidation.message
+    });
+}
+
+console.log("South African ID validation passed");
 
 
         // =====================================================

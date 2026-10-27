@@ -425,6 +425,36 @@ async function getTenderWithResponses(tenderId) {
     };
 }
 
+
+
+/**
+ * Returns every tender the given user has applied for,
+ * joined with the tender details, newest application first.
+ */
+async function getAppliedTendersByUserId(userId) {
+  const sql = `
+    SELECT
+      tr.tender_response_id       AS response_id,
+      tr.tender_id,
+      tr.user_id,
+      tr.status,
+      tr.created_at               AS applied_at,
+      t.title,
+      t.description,
+      t.location,
+      t.closing_date,
+      t.image_url
+    FROM tender_response tr
+    INNER JOIN tenderopportunity t ON t.tender_id = tr.tender_id
+    WHERE tr.user_id = ?
+    ORDER BY tr.created_at DESC
+  `;
+
+  const [rows] = await db.execute(sql, [userId]);
+  return rows;
+}
+
+
 module.exports = {
-    getTenderWithResponses
+    getTenderWithResponses,getAppliedTendersByUserId
 };

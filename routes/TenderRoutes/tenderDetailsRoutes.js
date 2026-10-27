@@ -4,7 +4,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
-    getTenderDetails
+    getTenderDetails,getMyAppliedTenders
 } = require("../../controllers/TenderController/tenderDetailsController");
 
 // Keep your existing working middleware imports
@@ -26,5 +26,9 @@ router.get(
     authorizeRoles(2, 3, 4),
     getTenderDetails
 );
+
+
+ 
+router.get("/my-applications/:userId",  authenticateToken,authorizeRoles(1,2,3),getMyAppliedTenders)
 
 module.exports = router;
