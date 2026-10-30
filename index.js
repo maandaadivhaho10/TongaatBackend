@@ -76,6 +76,12 @@ const chatRoutes = require(
 const landingOpportunityRoutes =
     require("./routes/LandingOpportunityRoutes/landingOpportunityRoutes");
     const contactRoutes = require("./routes/ContactUs/contactRoutes");
+    const superAdminRoutes = require(
+  "./routes/SuperAdmin/superAdminRoutes"
+);
+const activityLogRoutes = require(
+  "./routes/ActivityLogs/activityLogRoutes"
+);
 
 // ======================================================
 // INITIALIZE EXPRESS
@@ -265,7 +271,9 @@ app.use("/api/contact", contactRoutes);
 // ======================================================
 
 app.use("/api/funding", fundingRoutes);
+app.use("/api/super-admin", superAdminRoutes);
 
+app.use("/api/activity-logs", activityLogRoutes);
 // Socket.IO needs access to the HTTP server.
 // Instead of app.listen(), we create an HTTP server.
 
