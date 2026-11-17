@@ -1,5 +1,5 @@
-const db = require("../config/database");
-const { containerClient } = require("../config/azureStorage");
+const db = require("../../config/database");
+const { containerClient } = require("../../config/azureStorage");
 const { randomUUID } = require("crypto");
 
 

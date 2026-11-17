@@ -4,20 +4,20 @@ const router = express.Router();
 
 const {
     createRFQOpportunity,getUserRFQs,getMyAppliedRFQs,getAllRFQs
-} = require("../controllers/rfqController");
+} = require("../../controllers/RFQ/rfqController");
 
 const {
     applyForRFQ
-} = require("../controllers/rfqResponseController");
+} = require("../../controllers/RFQ/rfqResponseController");
 const 
     authenticateToken
- = require("../middleware/authMiddleware");
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles
-} = require("../middleware/roleMiddleware");
+} = require("../../middleware/roleMiddleware");
 
-const upload = require("../middleware/upload");
+const upload = require("../../middleware/upload");
 
 
 // Create RFQ opportunity

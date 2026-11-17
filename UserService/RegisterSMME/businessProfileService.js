@@ -1,4 +1,3 @@
-
 const db = require("../../config/database");
 
 const {
@@ -61,7 +60,6 @@ const createBusinessProfile = async (
                 has_bee_certificate,
                 tax_compliance_pin,
                 has_vat_registration,
-                vat_registration_number,
                 business_address,
                 community,
                 attended_esd_program,
@@ -70,7 +68,7 @@ const createBusinessProfile = async (
                 grant_loan_institution
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?
             )`,
             [
                 userId,
@@ -80,9 +78,8 @@ const createBusinessProfile = async (
                 data.bo_ownership_percentage ?? null,
                 data.bee_level ?? null,
                 data.has_bee_certificate ?? null,
-                data.tax_compliance_pin ?? null,
+                data.tax_compliance_pin,              // required, no null fallback
                 data.has_vat_registration ?? null,
-                data.vat_registration_number ?? null,
                 data.business_address ?? null,
                 data.community ?? null,
                 data.attended_esd_program ?? 0,
@@ -106,6 +103,10 @@ const createBusinessProfile = async (
             fileTypes.bee_document = "BEE_CERTIFICATE";
         } else if (data.has_bee_certificate === 0) {
             fileTypes.bee_document = "BEE_AFFIDAVIT";
+        }
+
+        if (data.has_vat_registration === 1) {
+            fileTypes.vat_document = "VAT_REGISTRATION";
         }
 
         // =====================================================

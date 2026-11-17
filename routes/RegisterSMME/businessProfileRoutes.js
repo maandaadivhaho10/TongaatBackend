@@ -5,8 +5,7 @@ const {
     registerBusinessProfile
 } = require("../../controllers/SMMERegister/businessProfileController");
 
-const     authenticateToken
- = require("../../middleware/authMiddleware");
+const authenticateToken = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles
@@ -57,6 +56,10 @@ router.post(
         },
         {
             name: "company_registration_document",
+            maxCount: 1
+        },
+        {
+            name: "vat_document",
             maxCount: 1
         }
     ]),

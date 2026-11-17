@@ -1,4 +1,3 @@
-
 const db = require("../../config/database");
 
 // =====================================================
@@ -113,7 +112,7 @@ async function getRFQWithResponses(rfqId) {
             bp.bo_ownership_percentage,
             bp.has_bee_certificate,
             bp.has_vat_registration,
-            bp.vat_registration_number,
+            bp.tax_compliance_pin,
             bp.tax_compliance_status,
 
             CASE
@@ -234,13 +233,8 @@ async function getRFQWithResponses(rfqId) {
 
     for (const document of documents) {
 
-        if (!documentsByBusiness.has(
-            document.business_id
-        )) {
-            documentsByBusiness.set(
-                document.business_id,
-                []
-            );
+        if (!documentsByBusiness.has(document.business_id)) {
+            documentsByBusiness.set(document.business_id, []);
         }
 
         documentsByBusiness
@@ -290,32 +284,26 @@ async function getRFQWithResponses(rfqId) {
 
         // ---------------------------------------------
         // SUPPLIER DOCUMENTS
+        // Documents are sorted newest first, so find()
+        // returns the latest upload of each type.
         // ---------------------------------------------
 
         const supplierDocuments =
-            documentsByBusiness.get(
-                supplier.business_id
-            ) || [];
+            documentsByBusiness.get(supplier.business_id) || [];
 
-        const beeDocument = supplierDocuments.find(
-            doc =>
-                doc.document_type === "BEE_CERTIFICATE" ||
-                doc.document_type === "BEE_AFFIDAVIT"
+        const findDocument = (...types) =>
+            supplierDocuments.find(doc =>
+                types.includes(doc.document_type)
+            );
+
+        const beeDocument = findDocument(
+            "BEE_CERTIFICATE",
+            "BEE_AFFIDAVIT"
         );
-
-        const financialDocument =
-            supplierDocuments.find(
-                doc =>
-                    doc.document_type ===
-                    "FINANCIAL_STATEMENT"
-            );
-
-        const companyDocument =
-            supplierDocuments.find(
-                doc =>
-                    doc.document_type ===
-                    "COMPANY_REGISTRATION"
-            );
+        const financialDocument = findDocument("FINANCIAL_STATEMENT");
+        const companyDocument = findDocument("COMPANY_REGISTRATION");
+        const vatDocument = findDocument("VAT_REGISTRATION");
+        const contractDocument = findDocument("CONTRACT_DOCUMENT");
 
         // ---------------------------------------------
         // B-BBEE INFORMATION
@@ -326,26 +314,23 @@ async function getRFQWithResponses(rfqId) {
                 ? null
                 : Boolean(supplier.has_bee_certificate);
 
-        supplier.bee_document_submitted =
-            Boolean(beeDocument);
-
-        supplier.bee_document_type =
-            beeDocument?.document_type || null;
-
-        supplier.bee_document_url =
-            beeDocument?.document_path || null;
-
-        supplier.bee_document_name =
-            beeDocument?.document_name || null;
+        supplier.bee_document_submitted = Boolean(beeDocument);
+        supplier.bee_document_type = beeDocument?.document_type || null;
+        supplier.bee_document_url = beeDocument?.document_path || null;
+        supplier.bee_document_name = beeDocument?.document_name || null;
 
         // ---------------------------------------------
-        // VAT INFORMATION
+        // VAT (document instead of VAT number)
         // ---------------------------------------------
 
         supplier.has_vat_registration =
             supplier.has_vat_registration == null
                 ? null
                 : Boolean(supplier.has_vat_registration);
+
+        supplier.has_vat_document = Boolean(vatDocument);
+        supplier.vat_document_url = vatDocument?.document_path || null;
+        supplier.vat_document_name = vatDocument?.document_name || null;
 
         // ---------------------------------------------
         // TAX COMPLIANCE
@@ -354,25 +339,33 @@ async function getRFQWithResponses(rfqId) {
         supplier.has_tax_compliance_pin =
             Boolean(supplier.has_tax_compliance_pin);
 
+        supplier.tax_compliance_status =
+            supplier.tax_compliance_status || "NOT_VERIFIED";
+
         // ---------------------------------------------
-        // FINANCIAL STATEMENTS
+        // FINANCIAL STATEMENT (optional)
         // ---------------------------------------------
 
         supplier.can_produce_financial_statements =
             supplier.can_produce_financial_statements == null
                 ? null
-                : Boolean(
-                    supplier.can_produce_financial_statements
-                );
+                : Boolean(supplier.can_produce_financial_statements);
 
-        supplier.has_financial_statement =
-            Boolean(financialDocument);
-
+        supplier.has_financial_statement = Boolean(financialDocument);
         supplier.financial_statement_url =
             financialDocument?.document_path || null;
-
         supplier.financial_statement_name =
             financialDocument?.document_name || null;
+
+        // ---------------------------------------------
+        // CONTRACT DOCUMENT (optional)
+        // ---------------------------------------------
+
+        supplier.has_contract_document = Boolean(contractDocument);
+        supplier.contract_document_url =
+            contractDocument?.document_path || null;
+        supplier.contract_document_name =
+            contractDocument?.document_name || null;
 
         // ---------------------------------------------
         // COMPANY REGISTRATION
@@ -380,9 +373,10 @@ async function getRFQWithResponses(rfqId) {
 
         supplier.has_company_registration_document =
             Boolean(companyDocument);
-
         supplier.company_registration_document_url =
             companyDocument?.document_path || null;
+        supplier.company_registration_document_name =
+            companyDocument?.document_name || null;
 
         // ---------------------------------------------
         // DOCUMENT SUBMISSION STATUS
@@ -391,31 +385,54 @@ async function getRFQWithResponses(rfqId) {
         supplier.document_status = {
 
             bee_document:
-                beeDocument
-                    ? "SUBMITTED"
-                    : "NOT_SUBMITTED",
+                beeDocument ? "SUBMITTED" : "NOT_SUBMITTED",
 
             financial_statement:
-                financialDocument
-                    ? "SUBMITTED"
-                    : "NOT_SUBMITTED",
+                financialDocument ? "SUBMITTED" : "NOT_SUBMITTED",
 
             company_registration:
-                companyDocument
-                    ? "SUBMITTED"
-                    : "NOT_SUBMITTED",
+                companyDocument ? "SUBMITTED" : "NOT_SUBMITTED",
 
+            // VAT registered -> a document is expected
             vat_registration:
                 supplier.has_vat_registration === true
-                    ? "REGISTERED"
+                    ? (vatDocument ? "SUBMITTED" : "MISSING")
                     : supplier.has_vat_registration === false
                         ? "NOT_REGISTERED"
                         : "NOT_PROVIDED",
+
+            contract_document:
+                contractDocument ? "SUBMITTED" : "NOT_SUBMITTED",
 
             tax_compliance_pin:
                 supplier.has_tax_compliance_pin
                     ? "PROVIDED"
                     : "NOT_PROVIDED"
+        };
+
+        // ---------------------------------------------
+        // MATURITY SCORE (out of 4, 1 point each)
+        // B-BBEE certificate (an affidavit earns 0),
+        // financial statement, VAT document, contract document.
+        // ---------------------------------------------
+
+        const scoreItems = {
+            bee_certificate:
+                beeDocument?.document_type === "BEE_CERTIFICATE",
+            financial_statement: Boolean(financialDocument),
+            vat_document: Boolean(vatDocument),
+            contract_document: Boolean(contractDocument)
+        };
+
+        const provided =
+            Object.values(scoreItems).filter(Boolean).length;
+        const totalPoints = Object.keys(scoreItems).length; // 4
+
+        supplier.document_score = {
+            provided,
+            total: totalPoints,
+            percentage: Math.round((provided / totalPoints) * 100),
+            breakdown: scoreItems
         };
 
         supplier.documents = supplierDocuments;

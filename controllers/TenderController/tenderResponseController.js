@@ -2,9 +2,9 @@ const {
     createTenderResponse,
     getResponsesByTender,
     getTenderResponseById
-} = require("../UserService/tenderResponseService");
-const transporter = require("../config/email");
-const db = require("../config/database");
+} = require("../../UserService/Tender/tenderResponseService");
+const transporter = require("../../config/email");
+const db = require("../../config/database");
 
 // Keep your existing db, createTenderResponse,
 // and transporter imports.

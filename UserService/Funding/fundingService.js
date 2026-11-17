@@ -251,7 +251,26 @@ const updateFundingResponseStatusService = async (
 
     return result.affectedRows > 0;
 };
+// GET TOP 6 LATEST FUNDING OPPORTUNITIES
+const getLatestFunding = async () => {
+    const sql = `
+        SELECT
+            funding_id,
+            title,
+            institution_funder,
+            description,
+            status,
+            published_by,
+            created_at
+        FROM fundingopportunity
+        ORDER BY created_at DESC
+        LIMIT 6
+    `;
 
+    const [rows] = await db.execute(sql);
+
+    return rows;
+};
 module.exports = {
     createFundingService,
     getAllFundingService,
@@ -260,5 +279,5 @@ module.exports = {
     applyForFundingService,
     getFundingResponsesService,
     getMyFundingApplicationsService,
-    updateFundingResponseStatusService
+    updateFundingResponseStatusService,getLatestFunding
 };

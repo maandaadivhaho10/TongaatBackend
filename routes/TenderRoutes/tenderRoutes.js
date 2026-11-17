@@ -6,15 +6,15 @@ const {
     createTenderController,
     getAllTendersController,
     getTenderByIdController
-} = require("../controllers/tenderController");
-const upload = require("../middleware/upload");
+} = require("../../controllers/TenderController/tenderController");
+const upload = require("../../middleware/upload");
 const 
     authenticateToken
- = require("../middleware/authMiddleware");
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles
-} = require("../middleware/roleMiddleware");
+} = require("../../middleware/roleMiddleware");
 
 // =====================================================
 // CREATE TENDER

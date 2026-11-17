@@ -1,6 +1,150 @@
 const db = require("../config/database");
 
 // =====================================================
+// DOCUMENT TYPES
+// These must match the values saved by the registration
+// services and the business_document.document_type ENUM.
+// =====================================================
+
+const DOCUMENT_TYPES = {
+    COMPANY: "COMPANY_REGISTRATION",
+    BEE_CERTIFICATE: "BEE_CERTIFICATE",
+    BEE_AFFIDAVIT: "BEE_AFFIDAVIT",
+    VAT: "VAT_REGISTRATION",
+    FINANCIAL: "FINANCIAL_STATEMENT",
+    CONTRACT: "CONTRACT_DOCUMENT"
+};
+
+// =====================================================
+// ATTACH DOCUMENT FIELDS TO A SUPPLIER
+// Shared by getAllSuppliers and getSupplierById so both
+// return the same document information.
+// Documents arrive newest first, so find() returns the
+// latest upload of each type.
+// =====================================================
+
+function attachDocumentFields(supplier, supplierDocuments) {
+
+    const findByType = (...types) =>
+        supplierDocuments.find(document =>
+            types.includes(document.document_type)
+        );
+
+    const beeDocument = findByType(
+        DOCUMENT_TYPES.BEE_CERTIFICATE,
+        DOCUMENT_TYPES.BEE_AFFIDAVIT
+    );
+    const companyDocument = findByType(DOCUMENT_TYPES.COMPANY);
+    const vatDocument = findByType(DOCUMENT_TYPES.VAT);
+    const financialDocument = findByType(DOCUMENT_TYPES.FINANCIAL);
+    const contractDocument = findByType(DOCUMENT_TYPES.CONTRACT);
+
+    // ---------------------------------------------
+    // B-BBEE
+    // ---------------------------------------------
+
+    supplier.has_bee_certificate =
+        supplier.has_bee_certificate == null
+            ? null
+            : Boolean(supplier.has_bee_certificate);
+
+    supplier.bee_document_submitted = Boolean(beeDocument);
+    supplier.bee_document_type = beeDocument?.document_type || null;
+    supplier.bee_document_url = beeDocument?.document_path || null;
+    supplier.bee_document_name = beeDocument?.document_name || null;
+
+    // ---------------------------------------------
+    // VAT (document instead of VAT number)
+    // ---------------------------------------------
+
+    supplier.has_vat_registration =
+        supplier.has_vat_registration == null
+            ? null
+            : Boolean(supplier.has_vat_registration);
+
+    supplier.has_vat_document = Boolean(vatDocument);
+    supplier.vat_document_url = vatDocument?.document_path || null;
+    supplier.vat_document_name = vatDocument?.document_name || null;
+
+    // ---------------------------------------------
+    // TAX COMPLIANCE PIN
+    // ---------------------------------------------
+
+    supplier.has_tax_compliance_pin =
+        Boolean(supplier.has_tax_compliance_pin);
+
+    // ---------------------------------------------
+    // FINANCIAL STATEMENT (optional)
+    // ---------------------------------------------
+
+    supplier.can_produce_financial_statements =
+        supplier.can_produce_financial_statements == null
+            ? null
+            : Boolean(supplier.can_produce_financial_statements);
+
+    supplier.has_financial_statement = Boolean(financialDocument);
+    supplier.financial_statement_url =
+        financialDocument?.document_path || null;
+    supplier.financial_statement_name =
+        financialDocument?.document_name || null;
+
+    // ---------------------------------------------
+    // CONTRACT DOCUMENT (optional)
+    // ---------------------------------------------
+
+    supplier.has_contract_document = Boolean(contractDocument);
+    supplier.contract_document_url =
+        contractDocument?.document_path || null;
+    supplier.contract_document_name =
+        contractDocument?.document_name || null;
+
+    // ---------------------------------------------
+    // COMPANY REGISTRATION DOCUMENT
+    // ---------------------------------------------
+
+    supplier.has_company_registration_document = Boolean(companyDocument);
+    supplier.company_registration_document_url =
+        companyDocument?.document_path || null;
+    supplier.company_registration_document_name =
+        companyDocument?.document_name || null;
+
+    // ---------------------------------------------
+    // DOCUMENT STATUS SUMMARY
+    // ---------------------------------------------
+
+    supplier.document_status = {
+
+        bee_document:
+            beeDocument ? "SUBMITTED" : "NOT_SUBMITTED",
+
+        company_registration:
+            companyDocument ? "SUBMITTED" : "NOT_SUBMITTED",
+
+        // VAT registered -> a document is expected
+        vat_registration:
+            supplier.has_vat_registration === true
+                ? (vatDocument ? "SUBMITTED" : "MISSING")
+                : supplier.has_vat_registration === false
+                    ? "NOT_REGISTERED"
+                    : "NOT_PROVIDED",
+
+        // Optional documents
+        financial_statement:
+            financialDocument ? "SUBMITTED" : "NOT_SUBMITTED",
+
+        contract_document:
+            contractDocument ? "SUBMITTED" : "NOT_SUBMITTED",
+
+        tax_compliance_pin:
+            supplier.has_tax_compliance_pin ? "PROVIDED" : "NOT_PROVIDED"
+    };
+
+    supplier.documents = supplierDocuments;
+
+    return supplier;
+}
+
+// =====================================================
 // GET ALL SUPPLIERS
 // ROLE ID = 1
 // =====================================================
@@ -33,12 +177,10 @@ async function getAllSuppliers() {
             bp.bo_ownership_percentage,
             bp.has_bee_certificate,
             bp.has_vat_registration,
-            bp.vat_registration_number,
 
             -- TAX COMPLIANCE PIN
             bp.tax_compliance_pin,
 
-            -- TAX COMPLIANCE PIN AVAILABILITY
             CASE
                 WHEN NULLIF(TRIM(bp.tax_compliance_pin), '')
                      IS NOT NULL THEN 1
@@ -165,10 +307,7 @@ async function getAllSuppliers() {
 
     for (const supplier of suppliers) {
 
-        // ---------------------------------------------
         // REGISTRATION STATUS
-        // ---------------------------------------------
-
         supplier.has_business_profile =
             Boolean(supplier.has_business_profile);
 
@@ -185,143 +324,17 @@ async function getAllSuppliers() {
                     ? "MATURITY_PENDING"
                     : "BUSINESS_PROFILE_PENDING";
 
-        // ---------------------------------------------
-        // GET SUPPLIER DOCUMENTS
-        // ---------------------------------------------
-
+        // DOCUMENTS
         const supplierDocuments =
             documentsByBusiness.get(supplier.business_id) || [];
 
-        const beeDocument = supplierDocuments.find(
-            document =>
-                document.document_type === "BEE_CERTIFICATE" ||
-                document.document_type === "BEE_AFFIDAVIT"
-        );
-
-        const financialDocument = supplierDocuments.find(
-            document =>
-                document.document_type === "FINANCIAL_STATEMENT"
-        );
-
-        const companyDocument = supplierDocuments.find(
-            document =>
-                document.document_type === "COMPANY_REGISTRATION"
-        );
-
-        // ---------------------------------------------
-        // B-BBEE INFORMATION
-        // ---------------------------------------------
-
-        supplier.has_bee_certificate =
-            supplier.has_bee_certificate == null
-                ? null
-                : Boolean(supplier.has_bee_certificate);
-
-        supplier.bee_document_submitted =
-            Boolean(beeDocument);
-
-        supplier.bee_document_type =
-            beeDocument?.document_type || null;
-
-        supplier.bee_document_url =
-            beeDocument?.document_path || null;
-
-        supplier.bee_document_name =
-            beeDocument?.document_name || null;
-
-        // ---------------------------------------------
-        // VAT INFORMATION
-        // ---------------------------------------------
-
-        supplier.has_vat_registration =
-            supplier.has_vat_registration == null
-                ? null
-                : Boolean(supplier.has_vat_registration);
-
-        // vat_registration_number is already
-        // returned in the main query.
-
-        // ---------------------------------------------
-        // TAX COMPLIANCE PIN
-        // ---------------------------------------------
-
-        supplier.has_tax_compliance_pin =
-            Boolean(supplier.has_tax_compliance_pin);
-
-        // The actual tax_compliance_pin is already
-        // returned from the SQL query.
-
-        // ---------------------------------------------
-        // FINANCIAL STATEMENTS
-        // ---------------------------------------------
-
-        supplier.can_produce_financial_statements =
-            supplier.can_produce_financial_statements == null
-                ? null
-                : Boolean(
-                    supplier.can_produce_financial_statements
-                );
-
-        supplier.has_financial_statement =
-            Boolean(financialDocument);
-
-        supplier.financial_statement_url =
-            financialDocument?.document_path || null;
-
-        supplier.financial_statement_name =
-            financialDocument?.document_name || null;
-
-        // ---------------------------------------------
-        // COMPANY REGISTRATION DOCUMENT
-        // ---------------------------------------------
-
-        supplier.has_company_registration_document =
-            Boolean(companyDocument);
-
-        supplier.company_registration_document_url =
-            companyDocument?.document_path || null;
-
-        // ---------------------------------------------
-        // DOCUMENT STATUS
-        // ---------------------------------------------
-
-        supplier.document_status = {
-
-            bee_document:
-                beeDocument
-                    ? "SUBMITTED"
-                    : "NOT_SUBMITTED",
-
-            financial_statement:
-                financialDocument
-                    ? "SUBMITTED"
-                    : "NOT_SUBMITTED",
-
-            company_registration:
-                companyDocument
-                    ? "SUBMITTED"
-                    : "NOT_SUBMITTED",
-
-            vat_registration:
-                supplier.has_vat_registration === true
-                    ? "REGISTERED"
-                    : supplier.has_vat_registration === false
-                        ? "NOT_REGISTERED"
-                        : "NOT_PROVIDED",
-
-            tax_compliance_pin:
-                supplier.has_tax_compliance_pin
-                    ? "PROVIDED"
-                    : "NOT_PROVIDED"
-        };
-
-        supplier.documents = supplierDocuments;
+        attachDocumentFields(supplier, supplierDocuments);
     }
 
     return suppliers;
 }
 
-//=================================================
+// =====================================================
 // GET SUPPLIER BY USER ID
 // =====================================================
 
@@ -338,17 +351,32 @@ async function getSupplierById(userId) {
 
             bp.business_id,
             bp.business_name,
+            bp.company_registration_number,
             bp.business_address,
+            bp.community,
             bp.bee_level,
             bp.bwo_ownership_percentage,
             bp.bo_ownership_percentage,
+            bp.has_bee_certificate,
+            bp.has_vat_registration,
+            bp.tax_compliance_pin,
+
+            CASE
+                WHEN NULLIF(TRIM(bp.tax_compliance_pin), '')
+                     IS NOT NULL THEN 1
+                ELSE 0
+            END AS has_tax_compliance_pin,
 
             s.sector_id,
             s.sector_name AS industry,
 
             bm.services,
             bm.annual_revenue,
+            bm.annual_revenue_range,
             bm.permanent_employees,
+            bm.contract_employees,
+            bm.number_of_employees,
+            bm.can_produce_financial_statements,
             bm.largest_contract_value
 
         FROM user u
@@ -366,19 +394,13 @@ async function getSupplierById(userId) {
           AND u.role_id = 1
     `;
 
-    const [rows] = await db.execute(
-        query,
-        [userId]
-    );
-
+    const [rows] = await db.execute(query, [userId]);
 
     if (rows.length === 0) {
         return null;
     }
 
-
     const supplier = rows[0];
-
 
     // =====================================================
     // GET DOCUMENTS
@@ -397,19 +419,15 @@ async function getSupplierById(userId) {
         ORDER BY uploaded_at DESC
     `;
 
-
     const [documents] = await db.execute(
         documentQuery,
         [supplier.business_id]
     );
 
-
-    supplier.documents = documents;
-
+    attachDocumentFields(supplier, documents);
 
     return supplier;
 }
-
 
 module.exports = {
     getAllSuppliers,

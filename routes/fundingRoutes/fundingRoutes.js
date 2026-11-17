@@ -10,7 +10,7 @@ const {
     applyForFunding,
     getFundingResponses,
     getMyFundingApplications,
-    updateFundingResponseStatus
+    updateFundingResponseStatus,getLatestFunding
 } = require("../../controllers/Funding/fundingController");
 // Adjust this path to your existing middleware
 const 
@@ -96,8 +96,16 @@ router.post(
 // =====================================================
 // GET FUNDING DETAILS
 // =====================================================
+// GET TOP 6 LATEST FUNDING OPPORTUNITIES
+router.get(
+    "/latest",
+    getLatestFunding
+);
 
 router.get("/:id", getFundingById);
+
+
+
 
 
 module.exports = router;

@@ -1,12 +1,14 @@
+const db = require("../../config/database");
 
-const db = require("../config/database");
+const transporter = require("../../config/email");
 
-const transporter = require("../config/email");
+const { containerClient } = require("../../config/azureStorage");
+const { randomUUID } = require("crypto");
 
 const {
     createRFQResponse,
     markEmailAsSent
-} = require("../UserService/rfqResponseService");
+} = require("../../UserService/RFQ/rfqResponseService");
 
 // =====================================================
 // APPLY FOR RFQ
@@ -15,6 +17,9 @@ const {
 async function applyForRFQ(req, res) {
 
     const connection = await db.getConnection();
+
+    // Tracks the uploaded blob so it can be removed if the DB save fails
+    let uploadedBlobClient = null;
 
     try {
 
@@ -247,13 +252,7 @@ async function applyForRFQ(req, res) {
         }
 
         // =================================================
-        // START TRANSACTION
-        // =================================================
-
-        await connection.beginTransaction();
-
-        // =================================================
-        // SAVE RESPONSE
+        // UPLOAD QUOTATION PDF TO AZURE BLOB STORAGE
         // =================================================
 
         console.log("RFQ APPLICATION DATA:");
@@ -265,13 +264,42 @@ async function applyForRFQ(req, res) {
         console.log("file type:", req.file.mimetype);
         console.log("file size:", req.file.size);
 
+        const blobName = `quotations/${randomUUID()}.pdf`;
+
+        const blockBlobClient =
+            containerClient.getBlockBlobClient(blobName);
+
+        await blockBlobClient.uploadData(
+            req.file.buffer,
+            {
+                blobHTTPHeaders: {
+                    blobContentType: req.file.mimetype
+                }
+            }
+        );
+
+        uploadedBlobClient = blockBlobClient;
+
+        const quotationDocumentUrl = blockBlobClient.url;
+
+        // =================================================
+        // START TRANSACTION
+        // =================================================
+
+        await connection.beginTransaction();
+
+        // =================================================
+        // SAVE RESPONSE
+        // =================================================
+
         const responseId = await createRFQResponse(
             connection,
             {
                 rfq_id: rfqId,
                 user_id,
                 proposal,
-                quoted_price
+                quoted_price,
+                quotation_document_path: quotationDocumentUrl
             }
         );
 
@@ -280,6 +308,9 @@ async function applyForRFQ(req, res) {
         // =================================================
 
         await connection.commit();
+
+        // Saved successfully, so the blob must no longer be cleaned up
+        uploadedBlobClient = null;
 
         // =================================================
         // SEND EMAIL TO RFQ PUBLISHER
@@ -417,7 +448,7 @@ async function applyForRFQ(req, res) {
         }
 
         // =================================================
-        // NEW: SEND CONFIRMATION EMAIL TO SMME APPLICANT
+        // SEND CONFIRMATION EMAIL TO SMME APPLICANT
         // =================================================
 
         let applicantEmailSent = false;
@@ -575,7 +606,8 @@ async function applyForRFQ(req, res) {
                 quotation_document: {
                     file_name: req.file.originalname,
                     file_type: req.file.mimetype,
-                    file_size: req.file.size
+                    file_size: req.file.size,
+                    url: quotationDocumentUrl
                 },
 
                 status: "SUBMITTED",
@@ -589,7 +621,23 @@ async function applyForRFQ(req, res) {
 
     } catch (error) {
 
-        await connection.rollback();
+        try {
+            await connection.rollback();
+        } catch (rollbackError) {
+            console.error("Rollback failed:", rollbackError);
+        }
+
+        // Remove the uploaded blob if the DB save failed
+        if (uploadedBlobClient) {
+            try {
+                await uploadedBlobClient.deleteIfExists();
+            } catch (cleanupError) {
+                console.error(
+                    "Failed to clean up uploaded blob:",
+                    cleanupError
+                );
+            }
+        }
 
         console.error(
             "RFQ application error:",

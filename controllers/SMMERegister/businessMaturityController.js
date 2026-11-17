@@ -1,4 +1,3 @@
-
 const {
     createBusinessMaturity
 } = require("../../UserService/RegisterSMME/businessMaturityService");
@@ -17,21 +16,11 @@ const parseBoolean = (value, fieldName) => {
         return null;
     }
 
-    if (
-        value === true ||
-        value === 1 ||
-        value === "1" ||
-        value === "true"
-    ) {
+    if ([true, 1, "1", "true"].includes(value)) {
         return 1;
     }
 
-    if (
-        value === false ||
-        value === 0 ||
-        value === "0" ||
-        value === "false"
-    ) {
+    if ([false, 0, "0", "false"].includes(value)) {
         return 0;
     }
 
@@ -142,10 +131,7 @@ const registerBusinessMaturity = async (req, res) => {
         ];
 
         for (const field of booleanFields) {
-            data[field] = parseBoolean(
-                data[field],
-                field
-            );
+            data[field] = parseBoolean(data[field], field);
         }
 
         // =====================================================
@@ -180,8 +166,7 @@ const registerBusinessMaturity = async (req, res) => {
         // 7. VALIDATE CLIENT REFERENCES
         // =====================================================
 
-        const clientReferences =
-            data.client_references ?? [];
+        const clientReferences = data.client_references ?? [];
 
         if (!Array.isArray(clientReferences)) {
             return res.status(400).json({
@@ -204,37 +189,26 @@ const registerBusinessMaturity = async (req, res) => {
             }
         }
 
-       
-// =====================================================
-// 8. VALIDATE FINANCIAL STATEMENT FILE
-// =====================================================
+        // =====================================================
+        // 8. VALIDATE OPTIONAL DOCUMENTS
+        // Financial statement and contract document are both
+        // optional. They are only checked if they were uploaded.
+        // =====================================================
 
-const financialStatement =
-    req.files?.financial_statement?.[0];
+        const optionalFiles = [
+            req.files?.financial_statement?.[0],
+            req.files?.contract_document?.[0]
+        ];
 
-if (financialStatement) {
+        for (const file of optionalFiles) {
 
-    if (
-        financialStatement.mimetype !== "application/pdf"
-    ) {
-        return res.status(400).json({
-            success: false,
-            message: "Financial statement must be a PDF file"
-        });
-    }
-}
-
-// Optional: Require a PDF if financial statements are available
-if (
-    data.can_produce_financial_statements === 1 &&
-    !financialStatement
-) {
-    return res.status(400).json({
-        success: false,
-        message: "Please upload your financial statement PDF"
-    });
-}
-
+            if (file && file.mimetype !== "application/pdf") {
+                return res.status(400).json({
+                    success: false,
+                    message: `${file.fieldname} must be a PDF file`
+                });
+            }
+        }
 
         // =====================================================
         // 9. VALIDATE EMPLOYEE COUNTS
@@ -319,11 +293,11 @@ if (
         // =====================================================
 
         const result = await createBusinessMaturity(
-    userId,
-    data,
-    clientReferences,
-    req.files
-);
+            userId,
+            data,
+            clientReferences,
+            req.files
+        );
 
         // =====================================================
         // 12. SUCCESS RESPONSE

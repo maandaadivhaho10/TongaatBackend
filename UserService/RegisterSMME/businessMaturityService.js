@@ -1,4 +1,3 @@
-
 const db = require("../../config/database");
 
 const {
@@ -216,24 +215,27 @@ const createBusinessMaturity = async (
         }
 
         // =====================================================
-        // 7. UPLOAD FINANCIAL STATEMENT TO AZURE
+        // 7. UPLOAD OPTIONAL DOCUMENTS
+        // Both documents are optional. If a file was not sent
+        // it is skipped and nothing is stored for it.
         // =====================================================
+
+        const fileTypes = {
+            financial_statement: "FINANCIAL_STATEMENT",
+            contract_document: "CONTRACT_DOCUMENT"
+        };
 
         const savedDocuments = [];
 
-        const financialStatement =
-            files?.financial_statement?.[0];
+        for (const [fieldName, documentType] of Object.entries(fileTypes)) {
 
-        if (financialStatement) {
+            const file = files?.[fieldName]?.[0];
 
-            console.log(
-                "Uploading financial statement for business:",
-                businessId
-            );
+            if (!file) continue;
 
             // Wait for Azure upload to finish
             const uploaded = await uploadDocument(
-                financialStatement,
+                file,
                 businessId
             );
 
@@ -247,12 +249,12 @@ const createBusinessMaturity = async (
                 !uploaded.document_path.trim()
             ) {
                 throw new Error(
-                    "Azure upload did not return a valid financial statement URL"
+                    `Azure upload did not return a valid URL for ${fieldName}`
                 );
             }
 
             // =================================================
-            // 8. SAVE FINANCIAL STATEMENT URL IN MYSQL
+            // 8. SAVE DOCUMENT URL IN MYSQL
             // =================================================
 
             const [documentResult] = await connection.query(
@@ -264,7 +266,7 @@ const createBusinessMaturity = async (
                 ) VALUES (?, ?, ?, ?)`,
                 [
                     businessId,
-                    "FINANCIAL_STATEMENT",
+                    documentType,
                     uploaded.document_name,
                     uploaded.document_path
                 ]
@@ -273,7 +275,7 @@ const createBusinessMaturity = async (
             savedDocuments.push({
                 document_id: documentResult.insertId,
                 business_id: businessId,
-                document_type: "FINANCIAL_STATEMENT",
+                document_type: documentType,
                 document_name: uploaded.document_name,
                 document_path: uploaded.document_path
             });

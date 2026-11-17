@@ -1,20 +1,20 @@
-const db = require("../config/database");
+const db = require("../../config/database");
 
 
 // =====================================================
 // CREATE RFQ RESPONSE
 // =====================================================
-
+ 
 async function createRFQResponse(connection, responseData) {
-
+ 
     const {
         rfq_id,
         user_id,
         proposal,
-        quoted_price
+        quoted_price,
+        quotation_document_path
     } = responseData;
-
-
+ 
     const [result] = await connection.execute(
         `
         INSERT INTO RFQ_response
@@ -27,19 +27,20 @@ async function createRFQResponse(connection, responseData) {
             status,
             email_sent
         )
-        VALUES (?, ?, ?, ?, NULL, 'SUBMITTED', FALSE)
+        VALUES (?, ?, ?, ?, ?, 'SUBMITTED', FALSE)
         `,
         [
             rfq_id,
             user_id,
             proposal,
-            quoted_price
+            quoted_price,
+            quotation_document_path
         ]
     );
-
-
+ 
     return result.insertId;
 }
+ 
 
 
 // =====================================================

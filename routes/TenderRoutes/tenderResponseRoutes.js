@@ -6,14 +6,14 @@ const {
     createTenderResponseController,
     getResponsesByTenderController,
     getTenderResponseByIdController
-} = require("../controllers/tenderResponseController");
+} = require("../../controllers/TenderController/tenderResponseController");
 const 
     authenticateToken
- = require("../middleware/authMiddleware");
+ = require("../../middleware/authMiddleware");
 
 const {
     authorizeRoles
-} = require("../middleware/roleMiddleware");
+} = require("../../middleware/roleMiddleware");
 
 
 // =====================================================

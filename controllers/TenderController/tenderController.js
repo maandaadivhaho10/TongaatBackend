@@ -2,13 +2,13 @@ const { randomUUID } = require("crypto");
 
 const {
     containerClient
-} = require("../config/azureStorage");
+} = require("../../config/azureStorage");
 
 const {
     createTender,
     getAllTenders,
     getTenderById
-} = require("../UserService/tenderService");
+} = require("../../UserService/Tender/tenderService");
 
 
 // =====================================================

@@ -1,11 +1,11 @@
-const db = require("../config/database");
+const db = require("../../config/database");
 
 const {
     createRFQ,
     addRFQSectors,
     getRFQsForUser,
     getAppliedRfqsByUser,getAllRFQsService
-} = require("../UserService/rfqService");
+} = require("../../UserService/RFQ/rfqService");
 
 
 // =====================================================

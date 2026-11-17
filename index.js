@@ -3,7 +3,7 @@ const http = require("http");
 
 const pool = require("./config/database");
 const fundingRoutes = require("./routes/fundingRoutes/fundingRoutes");
-
+const passwordResetRoutes = require("./routes/passwordResetRoutes/passwordResetRoutes");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
@@ -17,16 +17,16 @@ const initializeChatSocket = require("./socket/chatSocket");
 // ROUTES
 // ======================================================
 
-const authRoutes = require("./routes/authRoutes");
+const authRoutes = require("./routes/Registerroutes");
 
 const otpRoutes = require("./routes/otpRoutes");
 
-const rfqRoutes = require("./routes/rfqRoutes");
+const rfqRoutes = require("./routes/RFQ/rfqRoutes");
 
-const tenderRoutes = require("./routes/tenderRoutes");
+const tenderRoutes = require("./routes/TenderRoutes/tenderRoutes");
 
 const tenderResponseRoutes = require(
-  "./routes/tenderResponseRoutes"
+  "./routes/TenderRoutes/tenderResponseRoutes"
 );
 
 const supplierRoutes = require(
@@ -83,6 +83,7 @@ const activityLogRoutes = require(
   "./routes/ActivityLogs/activityLogRoutes"
 );
 
+const cipcRoutes = require("./routes/VerifyCompany/cipcRoutes");
 // ======================================================
 // INITIALIZE EXPRESS
 // ======================================================
@@ -140,7 +141,7 @@ app.use("/api/auth", authRoutes1);
 app.use("/api/auth1", authRoutes);
 
 app.use("/api/otp", otpRoutes);
-
+app.use("/api/auth", passwordResetRoutes);
 // ======================================================
 // SMME REGISTRATION ROUTES
 // ======================================================
@@ -274,6 +275,7 @@ app.use("/api/funding", fundingRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 
 app.use("/api/activity-logs", activityLogRoutes);
+app.use("/api/cipc", cipcRoutes);
 // Socket.IO needs access to the HTTP server.
 // Instead of app.listen(), we create an HTTP server.
 

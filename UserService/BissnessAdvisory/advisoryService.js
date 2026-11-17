@@ -51,10 +51,7 @@ const createAdvisoryService = async ({
 };
 
 // ======================================================
-// GET ALL BUSINESS ADVISORY REQUESTS
-// ONLY SUPPLIERS WITH BUSINESS PROFILE + BUSINESS MATURITY
-// ======================================================
-
+// 
 const getAllBusinessAdvisoryRequests = async () => {
 
     // ==================================================
@@ -84,13 +81,14 @@ const getAllBusinessAdvisoryRequests = async () => {
             bp.business_name,
             bp.company_registration_number,
             bp.bee_level,
+            bp.has_bee_certificate,
             bp.bwo_ownership_percentage,
             bp.bo_ownership_percentage,
             bp.business_address,
             bp.community,
+            bp.tax_compliance_pin,
             bp.tax_compliance_status,
             bp.has_vat_registration,
-            bp.vat_registration_number,
 
             CASE
                 WHEN NULLIF(
@@ -144,7 +142,7 @@ const getAllBusinessAdvisoryRequests = async () => {
     ];
 
     // ==================================================
-    // 3. FETCH BUSINESS DOCUMENTS
+    // 3. FETCH ACTIVE BUSINESS DOCUMENTS
     // ==================================================
 
     let documents = [];
@@ -169,6 +167,7 @@ const getAllBusinessAdvisoryRequests = async () => {
             FROM business_document
 
             WHERE business_id IN (${placeholders})
+              AND status = 'ACTIVE'
 
             ORDER BY uploaded_at DESC
             `,
@@ -206,27 +205,21 @@ const getAllBusinessAdvisoryRequests = async () => {
         const supplierDocuments =
             documentsByBusiness.get(row.business_id) || [];
 
-        // ==============================================
-        // CHECK DOCUMENT AVAILABILITY
-        // ==============================================
-
-        const hasDocument = types =>
-            supplierDocuments.some(doc =>
+        // Documents are sorted newest first, so find()
+        // returns the latest upload of each type.
+        const findDocument = (...types) =>
+            supplierDocuments.find(doc =>
                 types.includes(doc.document_type)
             );
 
-        const beeSubmitted = hasDocument([
+        const beeDocument = findDocument(
             "BEE_CERTIFICATE",
             "BEE_AFFIDAVIT"
-        ]);
-
-        const financialSubmitted = hasDocument([
-            "FINANCIAL_STATEMENT"
-        ]);
-
-        const registrationSubmitted = hasDocument([
-            "COMPANY_REGISTRATION"
-        ]);
+        );
+        const financialDocument = findDocument("FINANCIAL_STATEMENT");
+        const companyDocument = findDocument("COMPANY_REGISTRATION");
+        const vatDocument = findDocument("VAT_REGISTRATION");
+        const contractDocument = findDocument("CONTRACT_DOCUMENT");
 
         const vatRegistered =
             row.has_vat_registration === 1 ||
@@ -241,21 +234,26 @@ const getAllBusinessAdvisoryRequests = async () => {
 
         const documentStatus = {
 
-            bee_document: beeSubmitted
+            bee_document: beeDocument
                 ? "SUBMITTED"
                 : "NOT_SUBMITTED",
 
-            financial_statement: financialSubmitted
+            financial_statement: financialDocument
                 ? "SUBMITTED"
                 : "NOT_SUBMITTED",
 
-            company_registration: registrationSubmitted
+            company_registration: companyDocument
                 ? "SUBMITTED"
                 : "NOT_SUBMITTED",
 
+            // VAT registered -> a document is expected
             vat_registration: vatRegistered
-                ? "REGISTERED"
+                ? (vatDocument ? "SUBMITTED" : "MISSING")
                 : "NOT_REGISTERED",
+
+            contract_document: contractDocument
+                ? "SUBMITTED"
+                : "NOT_SUBMITTED",
 
             tax_compliance_pin: taxPinProvided
                 ? "PROVIDED"
@@ -263,24 +261,32 @@ const getAllBusinessAdvisoryRequests = async () => {
         };
 
         // ==============================================
-        // DOCUMENT SCORE
+        // MATURITY SCORE (out of 4, 1 point each)
+        //   1. B-BBEE certificate (an affidavit earns 0)
+        //   2. Financial statement
+        //   3. VAT registration document
+        //   4. Contract document
+        // Company registration and the tax PIN add no points.
         // ==============================================
 
-        const provided = Object.values(documentStatus)
-            .filter(value =>
-                [
-                    "SUBMITTED",
-                    "REGISTERED",
-                    "PROVIDED"
-                ].includes(value)
-            ).length;
+        const scoreItems = {
+            bee_certificate:
+                beeDocument?.document_type === "BEE_CERTIFICATE",
+            financial_statement: Boolean(financialDocument),
+            vat_document: Boolean(vatDocument),
+            contract_document: Boolean(contractDocument)
+        };
+
+        const provided =
+            Object.values(scoreItems).filter(Boolean).length;
+
+        const totalPoints = Object.keys(scoreItems).length; // 4
 
         const documentScore = {
             provided,
-            total: 5,
-            percentage: Math.round(
-                (provided / 5) * 100
-            )
+            total: totalPoints,
+            percentage: Math.round((provided / totalPoints) * 100),
+            breakdown: scoreItems
         };
 
         // ==============================================
@@ -304,32 +310,15 @@ const getAllBusinessAdvisoryRequests = async () => {
 
         return {
 
-            advisory_request_id:
-                row.advisory_request_id,
-
-            user_id:
-                row.user_id,
-
-            subject:
-                row.subject,
-
-            description:
-                row.description,
-
-            request_date:
-                row.request_date,
-
-            preferred_date:
-                row.preferred_date,
-
-            status:
-                row.advisory_status,
-
-            assigned_to:
-                row.assigned_to,
-
-            created_at:
-                row.advisory_created_at,
+            advisory_request_id: row.advisory_request_id,
+            user_id: row.user_id,
+            subject: row.subject,
+            description: row.description,
+            request_date: row.request_date,
+            preferred_date: row.preferred_date,
+            status: row.advisory_status,
+            assigned_to: row.assigned_to,
+            created_at: row.advisory_created_at,
 
             // ==========================================
             // SUPPLIER INFORMATION
@@ -338,122 +327,94 @@ const getAllBusinessAdvisoryRequests = async () => {
             supplier: {
 
                 // USER INFORMATION
-
-                user_id:
-                    row.user_id,
-
-                title:
-                    row.title,
-
-                first_name:
-                    row.first_name,
-
-                last_name:
-                    row.last_name,
-
-                email:
-                    row.email,
-
-                phone_number:
-                    row.phone_number,
-
-                gender:
-                    row.gender,
+                user_id: row.user_id,
+                title: row.title,
+                first_name: row.first_name,
+                last_name: row.last_name,
+                email: row.email,
+                phone_number: row.phone_number,
+                gender: row.gender,
 
                 // BUSINESS PROFILE
-
-                business_id:
-                    row.business_id,
-
-                business_name:
-                    row.business_name,
-
+                business_id: row.business_id,
+                business_name: row.business_name,
                 company_registration_number:
                     row.company_registration_number,
-
-                bee_level:
-                    formattedBeeLevel,
-
-                bwo_ownership_percentage:
-                    row.bwo_ownership_percentage,
-
-                bo_ownership_percentage:
-                    row.bo_ownership_percentage,
-
-                business_address:
-                    row.business_address,
-
-                community:
-                    row.community,
+                bee_level: formattedBeeLevel,
+                bwo_ownership_percentage: row.bwo_ownership_percentage,
+                bo_ownership_percentage: row.bo_ownership_percentage,
+                business_address: row.business_address,
+                community: row.community,
 
                 // BUSINESS MATURITY
-
-                maturity_id:
-                    row.maturity_id,
-
-                industry:
-                    row.industry,
-
-                services:
-                    row.services,
-
-                number_of_employees:
-                    row.number_of_employees,
-
-                permanent_employees:
-                    row.permanent_employees,
-
-                contract_employees:
-                    row.contract_employees,
-
-                annual_revenue:
-                    row.annual_revenue,
-
-                annual_revenue_range:
-                    row.annual_revenue_range,
-
-                largest_contract_value:
-                    row.largest_contract_value,
-
+                maturity_id: row.maturity_id,
+                industry: row.industry,
+                services: row.services,
+                number_of_employees: row.number_of_employees,
+                permanent_employees: row.permanent_employees,
+                contract_employees: row.contract_employees,
+                annual_revenue: row.annual_revenue,
+                annual_revenue_range: row.annual_revenue_range,
+                largest_contract_value: row.largest_contract_value,
                 can_produce_financial_statements:
-                    row.can_produce_financial_statements,
+                    row.can_produce_financial_statements == null
+                        ? null
+                        : Boolean(row.can_produce_financial_statements),
 
                 // REGISTRATION
-
                 registered_in_both: true,
 
-                // VAT
+                // B-BBEE DOCUMENT
+                has_bee_certificate:
+                    row.has_bee_certificate == null
+                        ? null
+                        : Boolean(row.has_bee_certificate),
+                bee_document_submitted: Boolean(beeDocument),
+                bee_document_type: beeDocument?.document_type || null,
+                bee_document_url: beeDocument?.document_path || null,
+                bee_document_name: beeDocument?.document_name || null,
 
-                has_vat_registration:
-                    vatRegistered,
+                // VAT (document instead of VAT number)
+                has_vat_registration: vatRegistered,
+                has_vat_document: Boolean(vatDocument),
+                vat_document_url: vatDocument?.document_path || null,
+                vat_document_name: vatDocument?.document_name || null,
 
-                vat_registration_number:
-                    row.vat_registration_number,
+                // FINANCIAL STATEMENT (optional)
+                has_financial_statement: Boolean(financialDocument),
+                financial_statement_url:
+                    financialDocument?.document_path || null,
+                financial_statement_name:
+                    financialDocument?.document_name || null,
+
+                // CONTRACT DOCUMENT (optional)
+                has_contract_document: Boolean(contractDocument),
+                contract_document_url:
+                    contractDocument?.document_path || null,
+                contract_document_name:
+                    contractDocument?.document_name || null,
+
+                // COMPANY REGISTRATION DOCUMENT
+                has_company_registration_document: Boolean(companyDocument),
+                company_registration_document_url:
+                    companyDocument?.document_path || null,
+                company_registration_document_name:
+                    companyDocument?.document_name || null,
 
                 // TAX COMPLIANCE
-
-                has_tax_compliance_pin:
-                    taxPinProvided,
-
+                tax_compliance_pin: row.tax_compliance_pin,
+                has_tax_compliance_pin: taxPinProvided,
                 tax_compliance_status:
-                    row.tax_compliance_status ||
-                    "NOT_VERIFIED",
+                    row.tax_compliance_status || "NOT_VERIFIED",
 
                 // DOCUMENTS
-
-                document_status:
-                    documentStatus,
-
-                document_score:
-                    documentScore,
-
-                documents:
-                    supplierDocuments
+                document_status: documentStatus,
+                document_score: documentScore,
+                documents: supplierDocuments
             }
         };
     });
 };
-
 
  // ======================================================
  // UPDATE BUSINESS ADVISORY REQUEST STATUS

@@ -1,4 +1,3 @@
-
 const {
     createBusinessProfile
 } = require("../../UserService/RegisterSMME/businessProfileService");
@@ -98,6 +97,16 @@ const registerBusinessProfile = async (req, res) => {
 
         data.business_name = data.business_name.trim();
 
+        // TAX COMPLIANCE PIN IS REQUIRED
+        if (!String(data.tax_compliance_pin ?? "").trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Tax compliance PIN is required"
+            });
+        }
+
+        data.tax_compliance_pin = String(data.tax_compliance_pin).trim();
+
         // =====================================================
         // 3. PARSE BOOLEAN FIELDS
         // =====================================================
@@ -114,21 +123,24 @@ const registerBusinessProfile = async (req, res) => {
         }
 
         // =====================================================
-        // 4. VALIDATE VAT
+        // 4. VALIDATE VAT DOCUMENT
         // =====================================================
 
-        if (
-            data.has_vat_registration === 1 &&
-            !String(data.vat_registration_number ?? "").trim()
-        ) {
+        const hasVatDocument = Boolean(req.files?.vat_document?.length);
+
+        if (data.has_vat_registration === 1 && !hasVatDocument) {
             return res.status(400).json({
                 success: false,
-                message: "VAT registration number is required"
+                message: "VAT registration document is required"
             });
         }
 
-        if (data.has_vat_registration === 0) {
-            data.vat_registration_number = null;
+        if (data.has_vat_registration !== 1 && hasVatDocument) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "VAT document can only be uploaded when the business is VAT registered"
+            });
         }
 
         // =====================================================

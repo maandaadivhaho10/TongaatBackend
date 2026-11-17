@@ -324,6 +324,27 @@ const updateFundingResponseStatus = async (req, res) => {
         return sendError(res, error);
     }
 };
+// GET TOP 6 LATEST FUNDING OPPORTUNITIES
+const getLatestFunding = async (req, res) => {
+    try {
+        const funding = await fundingService.getLatestFunding();
+
+        return res.status(200).json({
+            success: true,
+            message: "Latest funding opportunities retrieved successfully",
+            count: funding.length,
+            data: funding
+        });
+
+    } catch (error) {
+        console.error("Get Latest Funding Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve latest funding opportunities"
+        });
+    }
+};
 
 module.exports = {
     createFunding,
@@ -333,5 +354,5 @@ module.exports = {
     applyForFunding,
     getFundingResponses,
     getMyFundingApplications,
-    updateFundingResponseStatus
+    updateFundingResponseStatus,getLatestFunding
 };
