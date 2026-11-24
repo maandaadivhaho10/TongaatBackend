@@ -10,7 +10,7 @@ const getLatestOpportunities = async () => {
             description,
             closing_date,
             location
-        FROM TenderOpportunity
+        FROM tenderopportunity
         WHERE closing_date IS NULL
            OR closing_date >= CURDATE()
         ORDER BY created_at DESC

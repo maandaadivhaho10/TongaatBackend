@@ -57,7 +57,7 @@ async function createRFQ(connection, rfqData, imageFile) {
 
     const [result] = await connection.execute(
         `
-        INSERT INTO RFQopportunity
+        INSERT INTO rfqopportunity
         (
             title,
             description,
@@ -121,6 +121,7 @@ async function addRFQSectors(connection, rfqId, sectorIds) {
 
 // =====================================================
 // GET RFQs FOR USER
+// Fetch only OPEN RFQs that have not passed their closing date
 // =====================================================
 
 async function getRFQsForUser(connection, userId) {
@@ -139,7 +140,7 @@ async function getRFQsForUser(connection, userId) {
             s.sector_id,
             s.sector_name
 
-        FROM RFQopportunity r
+        FROM rfqopportunity r
 
         INNER JOIN rfq_sector rs
             ON r.rfq_id = rs.rfq_id
@@ -158,15 +159,24 @@ async function getRFQsForUser(connection, userId) {
 
         WHERE u.user_id = ?
           AND r.status = 'OPEN'
+          AND r.closing_date >= CURDATE()
+
+          -- Exclude RFQs already responded to by this user
+          AND NOT EXISTS (
+              SELECT 1
+              FROM rfq_response rr
+              WHERE rr.rfq_id = r.rfq_id
+                AND rr.user_id = u.user_id
+          )
 
         ORDER BY r.created_at DESC
         `,
         [userId]
     );
 
-
     return rows;
 }
+
 
 
 // =====================================================
@@ -192,9 +202,9 @@ async function getAppliedRfqsByUser(connection, userId) {
             rr.response_date,
             rr.status AS application_status
 
-        FROM RFQ_response rr
+        FROM rfq_response rr
 
-        INNER JOIN RFQopportunity r
+        INNER JOIN rfqopportunity r
             ON rr.rfq_id = r.rfq_id
 
         WHERE rr.user_id = ?

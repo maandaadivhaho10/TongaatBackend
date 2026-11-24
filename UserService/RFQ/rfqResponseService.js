@@ -17,7 +17,7 @@ async function createRFQResponse(connection, responseData) {
  
     const [result] = await connection.execute(
         `
-        INSERT INTO RFQ_response
+        INSERT INTO rfq_response
         (
             rfq_id,
             user_id,
@@ -51,7 +51,7 @@ async function markEmailAsSent(connection, responseId) {
 
     await connection.execute(
         `
-        UPDATE RFQ_response
+        UPDATE rfq_response
         SET
             email_sent = TRUE,
             email_sent_at = NOW()

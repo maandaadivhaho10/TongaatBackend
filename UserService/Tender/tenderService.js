@@ -14,7 +14,7 @@ async function createTender({
 }) {
 
     const query = `
-        INSERT INTO TenderOpportunity
+        INSERT INTO tenderopportunity
         (
             title,
             description,
@@ -56,7 +56,7 @@ async function getAllTenders() {
             status,
             image_url,
             created_at
-        FROM TenderOpportunity
+        FROM tenderopportunity
         ORDER BY created_at DESC
     `;
 
@@ -83,7 +83,7 @@ async function getTenderById(tenderId) {
             status,
             image_url,
             created_at
-        FROM TenderOpportunity
+        FROM tenderopportunity
         WHERE tender_id = ?
     `;
 

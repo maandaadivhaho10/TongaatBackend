@@ -10,7 +10,7 @@ async function createTenderResponse({
 }) {
 
     const query = `
-        INSERT INTO Tender_response
+        INSERT INTO tender_response
         (
             tender_id,
             user_id
@@ -43,7 +43,7 @@ async function getResponsesByTender(tender_id) {
             email_sent,
             email_sent_at,
             created_at
-        FROM Tender_response
+        FROM tender_response
         WHERE tender_id = ?
         ORDER BY created_at DESC
     `;
@@ -70,7 +70,7 @@ async function getTenderResponseById(tender_response_id) {
             email_sent,
             email_sent_at,
             created_at
-        FROM Tender_response
+        FROM tender_response
         WHERE tender_response_id = ?
     `;
 

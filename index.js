@@ -93,9 +93,25 @@ const app = express();
 // ======================================================
 // CORS CONFIGURATION
 // ======================================================
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  "http://localhost:3000,http://localhost:5173"
+)
+  .split(",")
+  .map(origin => origin.trim());
 
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: (origin, callback) => {
+    // Allow requests without an Origin header,
+    // such as server-to-server requests.
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(
+      new Error(`CORS blocked for origin: ${origin}`)
+    );
+  },
   credentials: true,
   methods: [
     "GET",
@@ -110,6 +126,7 @@ const corsOptions = {
     "Authorization",
   ],
 };
+
 
 app.use(cors(corsOptions));
 
@@ -301,7 +318,7 @@ app.set("io", io);
 
 const PORT = process.env.PORT || 5000;
 
-httpServer.listen(PORT, async () => {
+httpServer.listen(PORT, "0.0.0.0", async () =>{
   console.log("======================================");
   console.log("TONGAAT HULETT ESD PORTAL");
   console.log("======================================");

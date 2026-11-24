@@ -146,7 +146,7 @@ async function applyForRFQ(req, res) {
                 closing_date,
                 published_by,
                 status
-            FROM RFQopportunity
+            FROM rfqopportunity
             WHERE rfq_id = ?
             `,
             [rfqId]
@@ -233,7 +233,7 @@ async function applyForRFQ(req, res) {
         const [existingResponse] = await connection.execute(
             `
             SELECT rfq_response_id
-            FROM RFQ_response
+            FROM rfq_response
             WHERE rfq_id = ?
               AND user_id = ?
             `,

@@ -8,10 +8,19 @@ const db = require("../config/database");
 // ======================================================
 
 const initializeChatSocket = (httpServer) => {
+
+  const allowedOrigins = (
+    process.env.CORS_ORIGINS ||
+    "http://localhost:3000,http://localhost:5173"
+  )
+    .split(",")
+    .map(origin => origin.trim());
+
   const io = new Server(httpServer, {
     cors: {
-      origin: "http://localhost:5173",
+      origin: allowedOrigins,
       credentials: true,
+      methods: ["GET", "POST"],
     },
   });
 
@@ -27,7 +36,6 @@ const initializeChatSocket = (httpServer) => {
         return next(new Error("Authentication required"));
       }
 
-      // Use the SAME JWT secret as your REST auth middleware.
       const decoded = jwt.verify(
         token,
         process.env.JWT_SECRET,
@@ -40,8 +48,6 @@ const initializeChatSocket = (httpServer) => {
         return next(new Error("Invalid user"));
       }
 
-      // Retrieve the user's CURRENT role from MySQL.
-      // Do not trust a role supplied by the frontend.
       const [users] = await db.execute(
         `
         SELECT user_id, role_id, status
@@ -72,7 +78,11 @@ const initializeChatSocket = (httpServer) => {
       next();
 
     } catch (error) {
-      console.error("Socket authentication error:", error.message);
+      console.error(
+        "Socket authentication error:",
+        error.message
+      );
+
       next(new Error("Invalid or expired token"));
     }
   });
@@ -82,28 +92,24 @@ const initializeChatSocket = (httpServer) => {
   // ====================================================
 
   io.on("connection", (socket) => {
+
     const userId = socket.data.userId;
     const roleId = socket.data.roleId;
 
     console.log(`Chat connected: User ${userId}`);
 
-    // Each user gets a private notification room.
     socket.join(`user:${userId}`);
 
-    // All authorized ED Team members join the
-    // shared support notification room.
     if (roleId === 2) {
       socket.join("ed:support");
     }
-
-    // We deliberately do not allow clients to
-    // join arbitrary user or conversation rooms.
 
     socket.on("disconnect", (reason) => {
       console.log(
         `Chat disconnected: User ${userId} - ${reason}`
       );
     });
+
   });
 
   return io;
