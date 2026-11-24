@@ -95,7 +95,7 @@ const app = express();
 // ======================================================
 const allowedOrigins = (
   process.env.CORS_ORIGINS ||
-  "http://localhost:3000,http://localhost:5173"
+  "http://localhost:3000,http://localhost:5173,https://tongaat-new-web-app.vercel.app"
 )
   .split(",")
   .map(origin => origin.trim());
